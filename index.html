@@ -55,12 +55,16 @@
         .hidden { display: none !important; }
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 24, 39, 0.5); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; overflow-y: auto; }
-        .modal-content { background: var(--surface); padding: 30px 25px; border-radius: 24px; width: 85%; max-width: 380px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); margin: auto; }
+        .modal-content { background: var(--surface); padding: 30px 25px; border-radius: 24px; width: 85%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); margin: auto; max-height: 90vh; overflow-y: auto;}
         
-        .cat-list { max-height: 200px; overflow-y: auto; margin-top: 15px; border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
-        .cat-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; }
+        .cat-list { max-height: 200px; overflow-y: auto; margin-top: 15px; border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: #fafafa; }
+        .cat-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; }
         .cat-item:last-child { border-bottom: none; }
         .cat-delete { color: var(--danger); cursor: pointer; font-weight: bold; padding: 5px; }
+        .cat-badge { display: inline-block; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: bold; color: white; margin-left: 5px; }
+        .badge-expense { background: #ef4444; }
+        .badge-income { background: #10b981; }
+        .badge-asset { background: #3b82f6; }
     </style>
 </head>
 <body>
@@ -159,10 +163,16 @@
         <hr style="border-top: 1px solid #eee; margin: 15px 0;">
         <h4>افزودن دسته‌بندی جدید</h4>
         <form id="modalCategoryForm">
+            <label>نوع (هزینه / درآمد / دارایی):</label>
+            <select id="cat_type" required>
+                <option value="هزینه">هزینه</option>
+                <option value="درآمد">درآمد</option>
+                <option value="دارایی">دارایی</option>
+            </select>
             <label>دسته اصلی (سطح ۱):</label>
-            <input type="text" id="cat_level_1" placeholder="مثلاً هزینه، درآمد..." required>
+            <input type="text" id="cat_category" placeholder="مثلاً اغذیه، مسکن..." required>
             <label>زیردسته (سطح ۲):</label>
-            <input type="text" id="cat_level_2" placeholder="مثلاً سوپرمارکت، حقوق..." required>
+            <input type="text" id="cat_subcategory" placeholder="مثلاً تنقلات، اجاره..." required>
             <button type="submit" class="btn-secondary">افزودن دسته‌بندی</button>
             <button type="button" class="btn-cancel" onclick="closeModal('manageCategoryModal')">بستن</button>
         </form>
@@ -179,15 +189,20 @@
     let accountsList = [];
     let categoriesList = [];
 
-    // لیست پیش‌فرض دسته‌بندی‌ها برای کاربران جدید
+    // لیست پیش‌فرض کامل و سه‌سطحی
     const defaultCategories = [
-        { name_level_1: 'درآمد', name_level_2: 'حقوق و دستمزد' },
-        { name_level_1: 'درآمد', name_level_2: 'سود سرمایه‌گذاری' },
-        { name_level_1: 'هزینه', name_level_2: 'سوپرمارکت و خوراک' },
-        { name_level_1: 'هزینه', name_level_2: 'مسکن و شارژ' },
-        { name_level_1: 'هزینه', name_level_2: 'حمل و نقل' },
-        { name_level_1: 'هزینه', name_level_2: 'قبوض و اینترنت' },
-        { name_level_1: 'هزینه', name_level_2: 'تفریح و رستوران' }
+        { type: 'هزینه', category: 'اغذیه', subcategory: 'سوپرمارکت' },
+        { type: 'هزینه', category: 'اغذیه', subcategory: 'تنقلات' },
+        { type: 'هزینه', category: 'اغذیه', subcategory: 'رستوران و کافه' },
+        { type: 'هزینه', category: 'مسکن', subcategory: 'اجاره' },
+        { type: 'هزینه', category: 'مسکن', subcategory: 'قبوض (آب، برق، گاز)' },
+        { type: 'هزینه', category: 'حمل و نقل', subcategory: 'اسنپ و تاکسی' },
+        { type: 'هزینه', category: 'حمل و نقل', subcategory: 'بنزین و خودرو' },
+        { type: 'درآمد', category: 'حقوق و دستمزد', subcategory: 'حقوق ثابت' },
+        { type: 'درآمد', category: 'حقوق و دستمزد', subcategory: 'اضافه کاری و پاداش' },
+        { type: 'درآمد', category: 'سرمایه‌گذاری', subcategory: 'سود بانکی' },
+        { type: 'دارایی', category: 'نقد و بانک', subcategory: 'حساب جاری' },
+        { type: 'دارایی', category: 'نقد و بانک', subcategory: 'پس‌انداز' }
     ];
 
     window.addEventListener('load', async () => {
@@ -297,10 +312,9 @@
         if (!currentUser) return;
         const { data } = await supabaseClient.from('categories').select('*');
         
-        // ایده اختصاصی کاربر: اگر کاربر جدید است و هیچ دسته‌بندی‌ای ندارد
         if (!data || data.length === 0) {
             await supabaseClient.from('categories').insert(defaultCategories);
-            return loadCategories(); // بارگذاری مجدد بعد از ساخت
+            return loadCategories(); 
         }
 
         categoriesList = data;
@@ -308,10 +322,13 @@
         const currentVal = select.value;
         select.innerHTML = '<option value="">انتخاب دسته‌بندی...</option>';
         
+        // مرتب سازی بر اساس نوع
+        categoriesList.sort((a, b) => a.type.localeCompare(b.type));
+
         categoriesList.forEach(c => {
             const opt = document.createElement('option');
-            opt.value = `${c.name_level_1}|${c.name_level_2}`; // ذخیره سطح ۱ و ۲ با جداکننده
-            opt.innerText = `${c.name_level_1} ⬅️ ${c.name_level_2}`;
+            opt.value = `${c.type}|${c.category}|${c.subcategory}`; 
+            opt.innerText = `[${c.type}] ${c.category} ⬅️ ${c.subcategory}`;
             select.appendChild(opt);
         });
         if(currentVal) select.value = currentVal;
@@ -328,7 +345,14 @@
         categoriesList.forEach(c => {
             const div = document.createElement('div');
             div.className = 'cat-item';
-            div.innerHTML = `<span>${c.name_level_1} ⬅️ ${c.name_level_2}</span> <span class="cat-delete" onclick="deleteCategory('${c.id}')">✖</span>`;
+            let badgeClass = c.type === 'هزینه' ? 'badge-expense' : (c.type === 'درآمد' ? 'badge-income' : 'badge-asset');
+            div.innerHTML = `
+                <div>
+                    <span class="cat-badge ${badgeClass}">${c.type}</span> 
+                    ${c.category} ⬅️ ${c.subcategory}
+                </div> 
+                <span class="cat-delete" onclick="deleteCategory('${c.id}')">✖</span>
+            `;
             container.appendChild(div);
         });
     }
@@ -342,9 +366,11 @@
 
     document.getElementById('modalCategoryForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const l1 = document.getElementById('cat_level_1').value;
-        const l2 = document.getElementById('cat_level_2').value;
-        await supabaseClient.from('categories').insert([{ name_level_1: l1, name_level_2: l2 }]);
+        const type = document.getElementById('cat_type').value;
+        const category = document.getElementById('cat_category').value;
+        const subcategory = document.getElementById('cat_subcategory').value;
+        
+        await supabaseClient.from('categories').insert([{ type, category, subcategory }]);
         document.getElementById('modalCategoryForm').reset();
         await loadCategories();
         renderCategoryList();
@@ -387,10 +413,10 @@
             if (!accId || !catRaw) return alert('حساب و دسته‌بندی را انتخاب کنید.');
             
             data.account_id = accId;
-            // استخراج سطح ۱ و سطح ۲ از انتخاب کاربر
-            const [level1, level2] = catRaw.split('|');
-            data.category_level_1 = level1;
-            data.category_level_2 = level2;
+            const [catType, catMain, catSub] = catRaw.split('|');
+            data.category_type = catType;
+            data.category_main = catMain;
+            data.category_sub = catSub;
         }
 
         const { error } = await supabaseClient.from('transactions').insert([data]);
