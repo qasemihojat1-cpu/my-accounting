@@ -17,9 +17,11 @@
         .btn-cancel { background: #dc3545; margin-top: 8px; }
         .btn-cancel:hover { background: #c82333; }
         #network-status { text-align: center; font-size: 13px; margin-bottom: 15px; padding: 6px; border-radius: 6px; background: #e8f0fe; color: #1a73e8; }
-        .hidden { display: none; }
         
-        /* استایل مودال (پنجره پاپ‌آپ) افزودن حساب */
+        /* اصلاح تداخل نمایشی */
+        .hidden { display: none !important; }
+        
+        /* استایل پنجره پاپ‌آپ (Modal) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
     </style>
@@ -84,7 +86,7 @@
     </form>
 </div>
 
-<!-- پنجره مودال (پاپ‌آپ) افزودن حساب بانکی جدید -->
+<!-- پنجره پاپ‌آپ (Modal) تعریف حساب بانکی جدید (فقط زمان نیاز باز می‌شود) -->
 <div id="addAccountModal" class="modal-overlay hidden">
     <div class="modal-content">
         <h3>افزودن حساب بانکی جدید</h3>
@@ -118,7 +120,6 @@
         console.error('خطا در راه‌اندازی Supabase:', e);
     }
 
-    // نگهداری عنصر انتخابی که کاربر خواسته در آن حساب جدید بسازد
     let activeSelectElement = null;
 
     function setLocalDateTime() {
@@ -165,8 +166,7 @@
 
     let accountsList = [];
 
-    // بارگذاری حساب‌های بانکی و افزودن گزینه «+ افزودن حساب جدید» به منوهای کشویی
-    async function loadAccounts(selectToFocusId = null) {
+    async function loadAccounts() {
         try {
             const { data, error } = await supabaseClient.from('accounts').select('*');
             if (error) throw error;
@@ -188,7 +188,6 @@
                     selectEl.appendChild(opt);
                 });
 
-                // اضافه کردن گزینه افزودن حساب جدید در انتهای لیست
                 const addOpt = document.createElement('option');
                 addOpt.value = 'ADD_NEW_ACCOUNT';
                 addOpt.innerText = '➕ افزودن حساب بانکی جدید...';
@@ -202,21 +201,16 @@
             populateSelect(accSelect);
             populateSelect(fromSelect);
             populateSelect(toSelect);
-
-            if (selectToFocusId) {
-                document.getElementById(selectToFocusId).value = selectToFocusId;
-            }
         } catch (err) {
             console.error('خطا در بارگذاری حساب‌ها:', err.message);
         }
     }
 
-    // بررسی اینکه آیا کاربر گزینه «افزودن حساب جدید» را انتخاب کرده است یا خیر
     function checkAddAccountSelection(selectElement) {
         if (selectElement.value === 'ADD_NEW_ACCOUNT') {
             activeSelectElement = selectElement;
             document.getElementById('addAccountModal').classList.remove('hidden');
-            selectElement.value = ''; // ریست کردن موقت انتخاب
+            selectElement.value = ''; 
         }
     }
 
@@ -226,7 +220,6 @@
         activeSelectElement = null;
     }
 
-    // ثبت حساب بانکی جدید از طریق پنجره پاپ‌آپ
     document.getElementById('modalAccountForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const name = document.getElementById('modal_acc_name').value;
@@ -243,7 +236,6 @@
             closeModal();
             await loadAccounts();
 
-            // انتخاب خودکار حساب جدید ساخته شده در همان فیلدی که کاربر روی آن کلیک کرده بود
             if (activeSelectElement) {
                 activeSelectElement.value = newAccount.id;
             }
@@ -252,7 +244,6 @@
         }
     });
 
-    // ثبت تراکنش جدید
     document.getElementById('transactionForm').addEventListener('submit', async function(e) {
         e.preventDefault();
 
@@ -295,11 +286,9 @@
         }
 
         try {
-            // ۱. ثبت تراکنش در جدول
             const { error: txError } = await supabaseClient.from('transactions').insert([transactionData]);
             if (txError) throw txError;
 
-            // ۲. به‌روزرسانی موجودی حساب‌ها
             if (type === 'پرداخت') {
                 const acc = accountsList.find(a => a.id === targetAccountId);
                 const newBalance = parseFloat(acc.balance) - amount;
@@ -319,7 +308,7 @@
                 await supabaseClient.from('accounts').update({ balance: newToBalance }).eq('id', toAccId);
             }
 
-            alert('✅ تراکنش ثبت شد و موجودی حساب‌ها به‌روزرسانی گردید!');
+            alert('✅ تراکنش با موفقیت ثبت شد و موجودی حساب‌ها به‌روزرسانی گردید!');
             document.getElementById('transactionForm').reset();
             setLocalDateTime();
             handleTransactionTypeChange();
