@@ -52,6 +52,17 @@
 
         .category-step { margin-bottom: 8px; transition: all 0.3s ease; }
 
+        /* استایل نشان‌های (Chips) دسته‌بندی‌های اخیر */
+        .recent-wrapper { margin-top: 15px; margin-bottom: 10px; }
+        .recent-header { font-size: 11px; color: var(--text-muted); font-weight: bold; margin-bottom: 8px; }
+        .recent-container { display: flex; flex-wrap: wrap; gap: 6px; }
+        .recent-chip { 
+            background: #e0e7ff; color: #4338ca; border: none; border-radius: 20px; 
+            padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; 
+            margin: 0; width: auto; transition: all 0.2s; box-shadow: none;
+        }
+        .recent-chip:hover { background: #c7d2fe; transform: scale(1.05); }
+
         #network-status { text-align: center; font-size: 12px; margin-bottom: 25px; padding: 8px; border-radius: 8px; background: #eff6ff; color: var(--primary); font-weight: 600; }
         .user-email-badge { text-align: center; font-size: 14px; font-weight: bold; color: var(--text-main); margin-bottom: 15px; padding: 10px; background: var(--input-bg); border-radius: 10px; }
         .hidden { display: none !important; }
@@ -122,9 +133,15 @@
             <select id="to_account_id" onchange="checkAddAccountSelection(this)"></select>
         </div>
 
-        <!-- فیلدهای دسته‌بندی مرحله‌ای (Progressive) -->
         <div id="categoryDiv">
             <label>دسته‌بندی تراکنش:</label>
+
+            <!-- بخش دسته‌بندی‌های اخیر -->
+            <div id="recent_categories_wrapper" class="recent-wrapper hidden">
+                <div class="recent-header">⚡ انتخاب سریع از تراکنش‌های اخیر:</div>
+                <div id="recent_categories_container" class="recent-container"></div>
+            </div>
+
             <div class="category-step">
                 <select id="tx_cat_type" onchange="handleCatTypeChange()" required>
                     <option value="">۱. انتخاب نوع دسته‌بندی...</option>
@@ -210,16 +227,9 @@
     const defaultCategories = [
         { type: 'هزینه', category: 'اغذیه', subcategory: 'سوپرمارکت' },
         { type: 'هزینه', category: 'اغذیه', subcategory: 'تنقلات' },
-        { type: 'هزینه', category: 'اغذیه', subcategory: 'رستوران و کافه' },
         { type: 'هزینه', category: 'مسکن', subcategory: 'اجاره' },
-        { type: 'هزینه', category: 'مسکن', subcategory: 'قبوض (آب، برق، گاز)' },
         { type: 'هزینه', category: 'حمل و نقل', subcategory: 'اسنپ و تاکسی' },
-        { type: 'هزینه', category: 'حمل و نقل', subcategory: 'بنزین و خودرو' },
-        { type: 'درآمد', category: 'حقوق و دستمزد', subcategory: 'حقوق ثابت' },
-        { type: 'درآمد', category: 'حقوق و دستمزد', subcategory: 'اضافه کاری و پاداش' },
-        { type: 'درآمد', category: 'سرمایه‌گذاری', subcategory: 'سود بانکی' },
-        { type: 'دارایی', category: 'نقد و بانک', subcategory: 'حساب جاری' },
-        { type: 'دارایی', category: 'نقد و بانک', subcategory: 'پس‌انداز' }
+        { type: 'درآمد', category: 'حقوق و دستمزد', subcategory: 'حقوق ثابت' }
     ];
 
     window.addEventListener('load', async () => {
@@ -257,12 +267,75 @@
             setLocalDateTime();
             await loadAccounts();
             await loadCategories();
+            await loadRecentCategories(); // بارگذاری دسته‌های اخیر بعد از ورود
             handleTransactionTypeChange(); 
         } else {
             currentUser = null;
             authSection.classList.remove('hidden');
             appSection.classList.add('hidden');
         }
+    }
+
+    // بارگذاری هوشمند ۸ دسته اخیر از تراکنش‌ها
+    async function loadRecentCategories() {
+        if (!currentUser) return;
+        try {
+            const { data, error } = await supabaseClient.from('transactions')
+                .select('category_type, category_main, category_sub')
+                .not('category_type', 'is', null)
+                .order('transaction_date', { ascending: false })
+                .limit(30);
+
+            if (error) throw error;
+            
+            const wrapper = document.getElementById('recent_categories_wrapper');
+            const container = document.getElementById('recent_categories_container');
+            
+            if (!data || data.length === 0) {
+                wrapper.classList.add('hidden');
+                return;
+            }
+
+            const uniqueCats = [];
+            const seen = new Set();
+            for (let tx of data) {
+                const key = `${tx.category_type}|${tx.category_main}|${tx.category_sub}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueCats.push(tx);
+                    if (uniqueCats.length >= 6) break; // حداکثر ۶ دکمه میان‌بر
+                }
+            }
+
+            container.innerHTML = '';
+            uniqueCats.forEach(c => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'recent-chip';
+                const icon = c.category_type === 'هزینه' ? '🔴' : (c.category_type === 'درآمد' ? '🟢' : '🔵');
+                btn.innerHTML = `${icon} ${c.category_sub}`;
+                btn.onclick = () => selectRecentCategory(c.category_type, c.category_main, c.category_sub);
+                container.appendChild(btn);
+            });
+            wrapper.classList.remove('hidden');
+
+        } catch (e) {
+            console.error("خطا در بارگذاری دسته‌های اخیر:", e);
+        }
+    }
+
+    // پر کردن خودکار فیلدهای آبشاری با انتخاب میان‌بر
+    function selectRecentCategory(type, main, sub) {
+        const typeSelect = document.getElementById('tx_cat_type');
+        typeSelect.value = type;
+        handleCatTypeChange(); 
+
+        const mainSelect = document.getElementById('tx_cat_main');
+        mainSelect.value = main;
+        handleCatMainChange(); 
+
+        const subSelect = document.getElementById('tx_cat_sub');
+        subSelect.value = sub;
     }
 
     async function handleSignUp() {
@@ -343,7 +416,6 @@
         handleCatTypeChange(); 
     }
 
-    // منطق نمایش مرحله‌ای دسته‌بندی‌ها
     function handleCatTypeChange() {
         const type = document.getElementById('tx_cat_type').value;
         const mainContainer = document.getElementById('cat_main_container');
@@ -363,8 +435,8 @@
         const mains = [...new Set(categoriesList.filter(c => c.type === type).map(c => c.category))];
         mains.forEach(m => { mainSelect.innerHTML += `<option value="${m}">${m}</option>`; });
         
-        mainContainer.classList.remove('hidden'); // نمایش مرحله دوم
-        subContainer.classList.add('hidden'); // مخفی کردن مرحله سوم تا زمان انتخاب مرحله دوم
+        mainContainer.classList.remove('hidden'); 
+        subContainer.classList.add('hidden'); 
     }
 
     function handleCatMainChange() {
@@ -383,7 +455,7 @@
         const subs = categoriesList.filter(c => c.type === type && c.category === main);
         subs.forEach(s => { subSelect.innerHTML += `<option value="${s.subcategory}">${s.subcategory}</option>`; });
         
-        subContainer.classList.remove('hidden'); // نمایش مرحله نهایی
+        subContainer.classList.remove('hidden'); 
     }
 
     function openCategoryModal() {
@@ -505,7 +577,10 @@
 
         alert('✅ ثبت موفق!');
         document.getElementById('transactionForm').reset();
-        setLocalDateTime(); handleTransactionTypeChange(); await loadAccounts();
+        setLocalDateTime(); 
+        handleTransactionTypeChange(); 
+        await loadAccounts();
+        await loadRecentCategories(); // بروزرسانی میان‌برها پس از ثبت تراکنش جدید
     });
 </script>
 
