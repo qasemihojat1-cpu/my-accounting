@@ -82,6 +82,30 @@
         .btn-icon { flex: 0 0 48px; width: 48px; min-height: 48px; padding: 8px; margin-top: 0; background: var(--primary-soft); border: 1px solid #dce5ee; color: var(--primary); font-size: 18px; border-radius: 13px; box-shadow: none; }
         .btn-icon:hover { background: #dce8f2; transform: none; box-shadow: none; }
         .category-step { margin-bottom: 9px; transition: all .25s ease; }
+
+        .category-picker { position: relative; margin-bottom: 8px; z-index: 20; }
+        .category-picker-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; margin: 0; padding: 13px 15px; background: var(--input-bg); color: var(--text-main); border: 1px solid var(--border); border-radius: 13px; box-shadow: none; text-align: right; font-weight: 700; }
+        .category-picker-trigger:hover { background: #fff; border-color: #b9c9d7; box-shadow: none; transform: none; }
+        .category-picker-trigger[aria-expanded="true"] { border-color: var(--secondary); box-shadow: 0 0 0 4px rgba(22,133,102,.10); }
+        .picker-chevron { color: var(--text-muted); font-size: 20px; line-height: 1; }
+        .category-picker-panel { position: absolute; top: calc(100% + 7px); right: 0; left: 0; background: #fff; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 18px 45px rgba(20,43,74,.18); overflow: hidden; z-index: 100; }
+        .picker-topbar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f6f9fb; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 900; color: var(--primary); }
+        .picker-topbar #categoryPickerHeading { flex: 1; }
+        .picker-back, .picker-close { width: auto; min-height: 32px; margin: 0; padding: 5px 8px; border-radius: 8px; font-size: 12px; box-shadow: none; }
+        .picker-back { background: var(--primary-soft); color: var(--primary); }
+        .picker-back:hover, .picker-close:hover { transform: none; box-shadow: none; }
+        .picker-close { background: transparent; color: var(--text-muted); font-size: 14px; }
+        .picker-search { width: calc(100% - 20px); margin: 10px; min-height: 42px; padding: 9px 12px; }
+        .picker-options { max-height: 270px; overflow-y: auto; padding: 0 8px 8px; }
+        .picker-option { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; min-height: 43px; margin: 3px 0; padding: 10px 12px; background: #fff; color: var(--text-main); border: 1px solid transparent; border-radius: 10px; text-align: right; font-size: 13px; font-weight: 700; box-shadow: none; }
+        .picker-option:hover { background: #f0f8f4; border-color: #d3eadf; color: #12664f; transform: none; box-shadow: none; }
+        .picker-option .option-meta { color: var(--text-muted); font-size: 11px; font-weight: 500; }
+        .picker-empty { padding: 18px 12px; text-align: center; color: var(--text-muted); font-size: 12px; }
+        .category-tools-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+        #categoryPickerHint { font-size: 11px; color: var(--text-muted); }
+        .category-tools-row .btn-text { margin: 0; }
+        @media (max-width: 600px) { .category-picker-panel { position: relative; top: auto; margin-top: 7px; } .picker-options { max-height: 240px; } .category-tools-row { align-items: flex-start; } }
+
         .recent-wrapper { margin-top: 15px; margin-bottom: 13px; padding: 13px; border: 1px solid #dcefe7; border-radius: 15px; background: #f7fcf9; }
         .recent-header { font-size: 12px; color: var(--secondary); font-weight: 800; margin-bottom: 10px; }
         .recent-container { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -204,25 +228,32 @@
                 <div id="recent_categories_container" class="recent-container"></div>
             </div>
 
-            <div class="category-step">
-                <select id="tx_cat_type" onchange="handleCatTypeChange()" required>
-                    <option value="">۱. انتخاب نوع دسته‌بندی...</option>
-                    <option value="هزینه">🔴 هزینه</option>
-                    <option value="درآمد">🟢 درآمد</option>
-                    <option value="دارایی">🔵 دارایی</option>
-                    <option value="بدهی و طلب">🟠 بدهی و طلب</option>
-                </select>
+            <!-- انتخاب‌گر یکپارچه: نوع، دسته اصلی و زیردسته در یک فیلد -->
+            <div class="category-picker" id="categoryPicker">
+                <button type="button" class="category-picker-trigger" id="categoryPickerTrigger" aria-expanded="false" aria-controls="categoryPickerPanel" onclick="toggleCategoryPicker()">
+                    <span id="categoryPickerLabel">انتخاب دسته‌بندی...</span><span class="picker-chevron">⌄</span>
+                </button>
+                <div class="category-picker-panel hidden" id="categoryPickerPanel">
+                    <div class="picker-topbar">
+                        <button type="button" class="picker-back hidden" id="categoryPickerBack" onclick="categoryPickerBack()">→ بازگشت</button>
+                        <span id="categoryPickerHeading">انتخاب دسته‌بندی</span>
+                        <button type="button" class="picker-close" onclick="closeCategoryPicker()" aria-label="بستن">✕</button>
+                    </div>
+                    <input type="search" id="categoryPickerSearch" class="picker-search" placeholder="جست‌وجوی دسته یا زیردسته..." oninput="renderCategoryPickerOptions()" autocomplete="off">
+                    <div id="categoryPickerOptions" class="picker-options"></div>
+                </div>
             </div>
-            <div class="category-step hidden" id="cat_main_container">
-                <select id="tx_cat_main" onchange="handleCatMainChange()" required>
-                    <option value="">۲. انتخاب دسته اصلی...</option>
-                </select>
+            <div class="category-tools-row">
+                <span id="categoryPickerHint">برای انتخاب، دسته اصلی را بزن و سپس زیردسته را انتخاب کن.</span>
+                <button type="button" class="btn-text" onclick="openCategoryModal()">⚙️ مدیریت دسته‌ها</button>
             </div>
-            <div class="category-step flex-row hidden" id="cat_sub_container">
-                <select id="tx_cat_sub" required>
-                    <option value="">۳. انتخاب زیردسته نهایی...</option>
+            <!-- فیلدهای پنهان برای حفظ سازگاری با ذخیره‌سازی فعلی -->
+            <div class="hidden" aria-hidden="true">
+                <select id="tx_cat_type" onchange="handleCatTypeChange()">
+                    <option value="">انتخاب نوع</option><option value="هزینه">هزینه</option><option value="درآمد">درآمد</option><option value="دارایی">دارایی</option><option value="بدهی و طلب">بدهی و طلب</option>
                 </select>
-                <button type="button" class="btn-icon" onclick="openCategoryModal()" title="تنظیمات دسته‌بندی‌ها">⚙️</button>
+                <select id="tx_cat_main" onchange="handleCatMainChange()"><option value="">انتخاب دسته اصلی</option></select>
+                <select id="tx_cat_sub"><option value="">انتخاب زیردسته</option></select>
             </div>
         </div>
 
@@ -490,16 +521,8 @@
 
     // پر کردن خودکار فیلدهای آبشاری با انتخاب میان‌بر
     function selectRecentCategory(type, main, sub) {
-        const typeSelect = document.getElementById('tx_cat_type');
-        typeSelect.value = type;
-        handleCatTypeChange(); 
-
-        const mainSelect = document.getElementById('tx_cat_main');
-        mainSelect.value = main;
-        handleCatMainChange(); 
-
-        const subSelect = document.getElementById('tx_cat_sub');
-        subSelect.value = sub;
+        setSelectedCategory(type, main, sub);
+        closeCategoryPicker();
     }
 
     async function handleSignUp() {
@@ -548,6 +571,7 @@
         const txCatType = document.getElementById('tx_cat_type');
         if (type === 'پرداخت') { txCatType.value = 'هزینه'; handleCatTypeChange(); }
         else if (type === 'دریافت') { txCatType.value = 'درآمد'; handleCatTypeChange(); }
+        else if (type === 'مغایرت موجودی') { txCatType.value = ''; handleCatTypeChange(); }
     }
 
     async function loadAccounts() {
@@ -590,46 +614,167 @@
         handleCatTypeChange();
     }
 
+    let categoryPickerLevel = 'main';
+    let categoryPickerCurrentType = '';
+    let categoryPickerCurrentMain = '';
+
     function handleCatTypeChange() {
         const type = document.getElementById('tx_cat_type').value;
-        const mainContainer = document.getElementById('cat_main_container');
-        const subContainer = document.getElementById('cat_sub_container');
-        const mainSelect = document.getElementById('tx_cat_main');
-        const subSelect = document.getElementById('tx_cat_sub');
-        
-        mainSelect.innerHTML = '<option value="">۲. انتخاب دسته اصلی...</option>';
-        subSelect.innerHTML = '<option value="">۳. انتخاب زیردسته نهایی...</option>';
-        
+        document.getElementById('tx_cat_main').innerHTML = '<option value="">انتخاب دسته اصلی</option>';
+        document.getElementById('tx_cat_sub').innerHTML = '<option value="">انتخاب زیردسته</option>';
         if (!type) {
-            mainContainer.classList.add('hidden');
-            subContainer.classList.add('hidden');
+            categoryPickerLevel = 'type';
+            categoryPickerCurrentType = '';
+            categoryPickerCurrentMain = '';
+            updateCategoryPickerLabel();
+            if (document.getElementById('categoryPickerPanel') && !document.getElementById('categoryPickerPanel').classList.contains('hidden')) renderCategoryPickerOptions();
             return;
         }
-        
-        const mains = [...new Set(categoriesList.filter(c => c.type === type).map(c => c.category))];
-        mains.forEach(m => { mainSelect.innerHTML += `<option value="${m}">${m}</option>`; });
-        
-        mainContainer.classList.remove('hidden'); 
-        subContainer.classList.add('hidden'); 
+        categoryPickerCurrentType = type;
+        categoryPickerCurrentMain = '';
+        categoryPickerLevel = 'main';
+        updateCategoryPickerLabel();
+        if (document.getElementById('categoryPickerPanel') && !document.getElementById('categoryPickerPanel').classList.contains('hidden')) renderCategoryPickerOptions();
     }
 
     function handleCatMainChange() {
         const type = document.getElementById('tx_cat_type').value;
         const main = document.getElementById('tx_cat_main').value;
-        const subContainer = document.getElementById('cat_sub_container');
-        const subSelect = document.getElementById('tx_cat_sub');
-        
-        subSelect.innerHTML = '<option value="">۳. انتخاب زیردسته نهایی...</option>';
-        
-        if (!main) {
-            subContainer.classList.add('hidden');
+        const subs = categoriesList.filter(c => c.type === type && c.category === main);
+        document.getElementById('tx_cat_sub').innerHTML = '<option value="">انتخاب زیردسته</option>';
+        subs.forEach(item => {
+            const option = document.createElement('option'); option.value = item.subcategory; option.textContent = item.subcategory;
+            document.getElementById('tx_cat_sub').appendChild(option);
+        });
+        categoryPickerCurrentType = type;
+        categoryPickerCurrentMain = main;
+        categoryPickerLevel = 'sub';
+        if (document.getElementById('categoryPickerPanel') && !document.getElementById('categoryPickerPanel').classList.contains('hidden')) renderCategoryPickerOptions();
+    }
+
+    function toggleCategoryPicker() {
+        const panel = document.getElementById('categoryPickerPanel');
+        if (panel.classList.contains('hidden')) {
+            const chosenType = document.getElementById('tx_cat_type').value;
+            categoryPickerCurrentType = chosenType || '';
+            categoryPickerCurrentMain = '';
+            categoryPickerLevel = chosenType ? 'main' : 'type';
+            document.getElementById('categoryPickerSearch').value = '';
+            panel.classList.remove('hidden');
+            document.getElementById('categoryPickerTrigger').setAttribute('aria-expanded', 'true');
+            renderCategoryPickerOptions();
+            document.getElementById('categoryPickerSearch').focus();
+        } else closeCategoryPicker();
+    }
+
+    function closeCategoryPicker() {
+        document.getElementById('categoryPickerPanel').classList.add('hidden');
+        document.getElementById('categoryPickerTrigger').setAttribute('aria-expanded', 'false');
+    }
+
+    function categoryPickerBack() {
+        if (categoryPickerLevel === 'sub') {
+            categoryPickerLevel = 'main'; categoryPickerCurrentMain = '';
+        } else if (categoryPickerLevel === 'main') {
+            categoryPickerLevel = 'type'; categoryPickerCurrentType = '';
+            document.getElementById('tx_cat_type').value = '';
+            document.getElementById('tx_cat_main').value = '';
+            document.getElementById('tx_cat_sub').value = '';
+            updateCategoryPickerLabel();
+        }
+        document.getElementById('categoryPickerSearch').value = '';
+        renderCategoryPickerOptions();
+    }
+
+    function renderCategoryPickerOptions() {
+        const list = document.getElementById('categoryPickerOptions');
+        const heading = document.getElementById('categoryPickerHeading');
+        const back = document.getElementById('categoryPickerBack');
+        const query = document.getElementById('categoryPickerSearch').value.trim().toLocaleLowerCase('fa');
+        list.innerHTML = '';
+        back.classList.toggle('hidden', categoryPickerLevel === 'type');
+        const addOption = (label, meta, action, icon = '›') => {
+            const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'picker-option';
+            const title = document.createElement('span'); title.textContent = label;
+            const right = document.createElement('span'); right.className = 'option-meta'; right.textContent = meta || icon;
+            btn.append(title, right); btn.onclick = action; list.appendChild(btn);
+        };
+
+        if (query) {
+            heading.textContent = 'نتایج جست‌وجو';
+            const matches = categoriesList.filter(c => `${c.type} ${c.category} ${c.subcategory}`.toLocaleLowerCase('fa').includes(query));
+            const unique = new Set();
+            matches.forEach(c => {
+                const key = `${c.type}|${c.category}|${c.subcategory}`;
+                if (unique.has(key)) return; unique.add(key);
+                addOption(`${c.category} ← ${c.subcategory}`, c.type, () => { setSelectedCategory(c.type, c.category, c.subcategory); closeCategoryPicker(); }, 'انتخاب');
+            });
+            if (!unique.size) list.innerHTML = '<div class="picker-empty">موردی پیدا نشد.</div>';
             return;
         }
-        
-        const subs = categoriesList.filter(c => c.type === type && c.category === main);
-        subs.forEach(s => { subSelect.innerHTML += `<option value="${s.subcategory}">${s.subcategory}</option>`; });
-        
-        subContainer.classList.remove('hidden'); 
+
+        if (categoryPickerLevel === 'type') {
+            heading.textContent = 'انتخاب نوع دسته‌بندی';
+            const types = [
+                { value: 'هزینه', label: '🔴 هزینه' }, { value: 'درآمد', label: '🟢 درآمد' },
+                { value: 'دارایی', label: '🔵 دارایی' }, { value: 'بدهی و طلب', label: '🟠 بدهی و طلب' }
+            ];
+            types.forEach(t => addOption(t.label, 'مشاهده دسته‌ها', () => {
+                categoryPickerCurrentType = t.value; categoryPickerCurrentMain = ''; categoryPickerLevel = 'main';
+                document.getElementById('tx_cat_type').value = t.value;
+                document.getElementById('tx_cat_main').value = ''; document.getElementById('tx_cat_sub').value = '';
+                updateCategoryPickerLabel(); renderCategoryPickerOptions();
+            }));
+            return;
+        }
+
+        if (categoryPickerLevel === 'main') {
+            heading.textContent = `${categoryPickerCurrentType} · انتخاب دسته اصلی`;
+            const mains = [...new Set(categoriesList.filter(c => c.type === categoryPickerCurrentType).map(c => c.category))].sort((a,b) => a.localeCompare(b, 'fa'));
+            mains.forEach(main => addOption(`📁 ${main}`, 'نمایش زیردسته‌ها', () => {
+                categoryPickerCurrentMain = main; categoryPickerLevel = 'sub';
+                document.getElementById('tx_cat_main').value = main; document.getElementById('tx_cat_sub').value = '';
+                renderCategoryPickerOptions();
+            }));
+            if (!mains.length) list.innerHTML = '<div class="picker-empty">برای این نوع دسته‌ای ثبت نشده است.</div>';
+            return;
+        }
+
+        heading.textContent = `${categoryPickerCurrentMain} · انتخاب زیردسته`;
+        const subs = categoriesList.filter(c => c.type === categoryPickerCurrentType && c.category === categoryPickerCurrentMain).map(c => c.subcategory).sort((a,b) => a.localeCompare(b, 'fa'));
+        subs.forEach(sub => addOption(`📄 ${sub}`, 'انتخاب نهایی', () => {
+            setSelectedCategory(categoryPickerCurrentType, categoryPickerCurrentMain, sub); closeCategoryPicker();
+        }, '✓'));
+        if (!subs.length) list.innerHTML = '<div class="picker-empty">برای این دسته زیردسته‌ای ثبت نشده است.</div>';
+    }
+
+    function setSelectedCategory(type, main, sub) {
+        const typeSelect = document.getElementById('tx_cat_type');
+        const mainSelect = document.getElementById('tx_cat_main');
+        const subSelect = document.getElementById('tx_cat_sub');
+        typeSelect.value = type;
+        mainSelect.innerHTML = '<option value="">انتخاب دسته اصلی</option>';
+        [...new Set(categoriesList.filter(c => c.type === type).map(c => c.category))].forEach(name => {
+            const option = document.createElement('option'); option.value = name; option.textContent = name; mainSelect.appendChild(option);
+        });
+        mainSelect.value = main;
+        subSelect.innerHTML = '<option value="">انتخاب زیردسته</option>';
+        categoriesList.filter(c => c.type === type && c.category === main).forEach(c => {
+            const option = document.createElement('option'); option.value = c.subcategory; option.textContent = c.subcategory; subSelect.appendChild(option);
+        });
+        subSelect.value = sub;
+        categoryPickerCurrentType = type; categoryPickerCurrentMain = main; categoryPickerLevel = 'main';
+        updateCategoryPickerLabel();
+    }
+
+    function updateCategoryPickerLabel() {
+        const type = document.getElementById('tx_cat_type').value;
+        const main = document.getElementById('tx_cat_main').value;
+        const sub = document.getElementById('tx_cat_sub').value;
+        const label = document.getElementById('categoryPickerLabel');
+        if (type && main && sub) label.textContent = `${type} ← ${main} ← ${sub}`;
+        else if (type) label.textContent = `${type} · انتخاب دسته اصلی و زیردسته`;
+        else label.textContent = 'انتخاب دسته‌بندی...';
     }
 
     function openCategoryModal() {
