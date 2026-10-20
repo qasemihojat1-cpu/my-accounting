@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>حسابداری شخصی من</title>
     
-    <!-- اضافه کردن فونت زیبای وزیرمتن -->
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.0.0/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
 
     <style>
@@ -57,10 +56,9 @@
             font-size: 14px;
             color: var(--text-main);
             transition: all 0.3s ease;
-            appearance: none; /* برای یکدست شدن سلکت‌ها در موبایل */
+            appearance: none;
         }
 
-        /* ظاهر منوی کشویی */
         select {
             background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
             background-repeat: no-repeat;
@@ -74,8 +72,6 @@
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
             background-color: #fff;
         }
-
-        input::placeholder { color: #9ca3af; font-size: 13px; }
 
         button { 
             width: 100%;
@@ -102,24 +98,41 @@
         .btn-cancel { background: transparent; color: var(--text-muted); border: 1px solid var(--border); box-shadow: none; margin-top: 10px; }
         .btn-cancel:hover { background: #fee2e2; color: #ef4444; border-color: #ef4444; box-shadow: none; transform: none; }
 
+        .btn-logout { background: #ef4444; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2); margin-top: 30px; }
+        .btn-logout:hover { background: #dc2626; box-shadow: 0 6px 12px -2px rgba(239, 68, 68, 0.3); }
+
         #network-status { text-align: center; font-size: 12px; margin-bottom: 25px; padding: 8px; border-radius: 8px; background: #eff6ff; color: var(--primary); font-weight: 600; }
+        .user-email-badge { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 15px; }
 
         .hidden { display: none !important; }
 
-        /* استایل پنجره پاپ‌آپ (Modal) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 24, 39, 0.5); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: var(--surface); padding: 30px 25px; border-radius: 24px; width: 85%; max-width: 380px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
     </style>
 </head>
 <body>
 
-<div class="container">
+<!-- بخش ورود و ثبت‌نام -->
+<div id="auth-section" class="container">
+    <h2>ورود به سیستم</h2>
+    
+    <label>ایمیل:</label>
+    <input type="email" id="auth_email" placeholder="name@example.com" required>
+    
+    <label>رمز عبور:</label>
+    <input type="password" id="auth_password" placeholder="حداقل ۶ کاراکتر" required>
+    
+    <button onclick="handleLogin()">ورود به حساب</button>
+    <button class="btn-cancel" onclick="handleSignUp()">ثبت‌نام کاربر جدید</button>
+</div>
+
+<!-- بخش اصلی اپلیکیشن (پنل کاربری) -->
+<div id="app-section" class="container hidden">
     <h2>حسابداری شخصی</h2>
+    <div id="user-info" class="user-email-badge"></div>
     <div id="network-status">در حال اتصال به سرور...</div>
 
-    <!-- فرم ثبت تراکنش -->
     <form id="transactionForm">
-        
         <label>نوع تراکنش:</label>
         <select id="type" required onchange="handleTransactionTypeChange()">
             <option value="پرداخت">پرداخت</option>
@@ -128,15 +141,13 @@
             <option value="مغایرت موجودی">مغایرت موجودی</option>
         </select>
 
-        <!-- فیلد حساب بانکی (برای پرداخت، دریافت، مغایرت) -->
         <div id="singleAccountDiv">
             <label>حساب بانکی:</label>
             <select id="account_id" onchange="checkAddAccountSelection(this)">
-                <option value="">انتخاب حساب بانکی...</option>
+                <option value="">انتخاب حساب...</option>
             </select>
         </div>
 
-        <!-- فیلدهای انتقال موجودی (مبدا و مقصد) -->
         <div id="transferDiv" class="hidden">
             <label>انتقال از حساب (مبدا):</label>
             <select id="from_account_id" onchange="checkAddAccountSelection(this)">
@@ -149,7 +160,6 @@
             </select>
         </div>
 
-        <!-- فیلد دسته‌بندی -->
         <div id="categoryDiv">
             <label>دسته‌بندی:</label>
             <select id="category_select">
@@ -168,9 +178,11 @@
 
         <button type="submit">ثبت تراکنش</button>
     </form>
+    
+    <button class="btn-logout" onclick="handleLogout()">خروج از حساب کاربری</button>
 </div>
 
-<!-- پنجره پاپ‌آپ (Modal) تعریف حساب بانکی جدید (فقط زمان نیاز باز می‌شود) -->
+<!-- مودال افزودن حساب بانکی -->
 <div id="addAccountModal" class="modal-overlay hidden">
     <div class="modal-content">
         <h3>افزودن حساب جدید</h3>
@@ -190,46 +202,96 @@
     </div>
 </div>
 
-<!-- کتابخانه اتصال به Supabase نسخه پایدار ۲ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
     const SUPABASE_URL = 'https://myqtpfdohayrhqmafqrj.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_6iFdGoWIvKrGKjfF_T-zXQ_-717yY63';
     
-    let supabaseClient;
-    try {
-        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } catch (e) {
-        console.error('خطا در راه‌اندازی Supabase:', e);
+    let supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let currentUser = null;
+    let activeSelectElement = null;
+    let accountsList = [];
+
+    // بررسی وضعیت ورود کاربر هنگام باز شدن سایت
+    window.addEventListener('load', async () => {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        handleSession(session);
+        
+        supabaseClient.auth.onAuthStateChange((_event, session) => {
+            handleSession(session);
+        });
+
+        updateNetworkStatus();
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+    });
+
+    async function handleSession(session) {
+        const authSection = document.getElementById('auth-section');
+        const appSection = document.getElementById('app-section');
+        
+        if (session && session.user) {
+            currentUser = session.user;
+            authSection.classList.add('hidden');
+            appSection.classList.remove('hidden');
+            document.getElementById('user-info').innerText = `کاربر: ${currentUser.email}`;
+            setLocalDateTime();
+            await loadAccounts();
+        } else {
+            currentUser = null;
+            authSection.classList.remove('hidden');
+            appSection.classList.add('hidden');
+        }
     }
 
-    let activeSelectElement = null;
+    // ثبت نام کاربر جدید
+    async function handleSignUp() {
+        const email = document.getElementById('auth_email').value;
+        const password = document.getElementById('auth_password').value;
+        if (!email || !password) return alert('لطفاً ایمیل و رمز عبور را وارد کنید.');
+        
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) {
+            alert('خطا در ثبت نام: ' + error.message);
+        } else {
+            alert('ثبت‌نام با موفقیت انجام شد! اکنون می‌توانید وارد شوید.');
+        }
+    }
+
+    // ورود به سیستم
+    async function handleLogin() {
+        const email = document.getElementById('auth_email').value;
+        const password = document.getElementById('auth_password').value;
+        if (!email || !password) return alert('لطفاً ایمیل و رمز عبور را وارد کنید.');
+
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) alert('ایمیل یا رمز عبور اشتباه است.');
+    }
+
+    // خروج از سیستم
+    async function handleLogout() {
+        await supabaseClient.auth.signOut();
+    }
 
     function setLocalDateTime() {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('transaction_date').value = now.toISOString().slice(0, 16);
     }
-    setLocalDateTime();
 
     function updateNetworkStatus() {
         const statusEl = document.getElementById('network-status');
         if (navigator.onLine) {
-            statusEl.innerText = '🟢 آنلاین - متصل به سرور ابری';
+            statusEl.innerText = '🟢 متصل به سرور ابری';
             statusEl.style.background = '#ecfdf5';
             statusEl.style.color = '#059669';
         } else {
-            statusEl.innerText = '🔴 آفلاین - ذخیره موقت در گوشی';
+            statusEl.innerText = '🔴 آفلاین - ذخیره موقت';
             statusEl.style.background = '#fef2f2';
             statusEl.style.color = '#dc2626';
         }
     }
-
-    window.addEventListener('load', async () => {
-        updateNetworkStatus();
-        await loadAccounts();
-    });
 
     function handleTransactionTypeChange() {
         const type = document.getElementById('type').value;
@@ -248,9 +310,8 @@
         }
     }
 
-    let accountsList = [];
-
     async function loadAccounts() {
+        if (!currentUser) return;
         try {
             const { data, error } = await supabaseClient.from('accounts').select('*');
             if (error) throw error;
@@ -315,8 +376,7 @@
             if (error) throw error;
 
             const newAccount = data[0];
-            alert('✅ حساب بانکی جدید با موفقیت اضافه شد!');
-            
+            alert('✅ حساب جدید اضافه شد!');
             closeModal();
             await loadAccounts();
 
@@ -324,7 +384,7 @@
                 activeSelectElement.value = newAccount.id;
             }
         } catch (err) {
-            alert('❌ خطا در ثبت حساب: ' + err.message);
+            alert('❌ خطا: ' + err.message);
         }
     });
 
@@ -336,36 +396,20 @@
         const transaction_date = document.getElementById('transaction_date').value;
         const description = document.getElementById('description').value;
 
-        let transactionData = {
-            type,
-            amount,
-            transaction_date,
-            description
-        };
+        let transactionData = { type, amount, transaction_date, description };
 
-        let targetAccountId = null;
-        let fromAccId = null;
-        let toAccId = null;
+        let targetAccountId = null, fromAccId = null, toAccId = null;
 
         if (type === 'انتقال موجودی') {
             fromAccId = document.getElementById('from_account_id').value;
             toAccId = document.getElementById('to_account_id').value;
-            if (!fromAccId || !toAccId) {
-                alert('لطفاً حساب مبدا و مقصد را انتخاب کنید.');
-                return;
-            }
-            if (fromAccId === toAccId) {
-                alert('حساب مبدا و مقصد نمی‌تواند یکی باشد.');
-                return;
-            }
+            if (!fromAccId || !toAccId) return alert('حساب مبدا و مقصد را انتخاب کنید.');
+            if (fromAccId === toAccId) return alert('مبدا و مقصد نمی‌توانند یکی باشند.');
             transactionData.from_account_id = fromAccId;
             transactionData.to_account_id = toAccId;
         } else {
             targetAccountId = document.getElementById('account_id').value;
-            if (!targetAccountId) {
-                alert('لطفاً حساب بانکی را انتخاب کنید.');
-                return;
-            }
+            if (!targetAccountId) return alert('حساب را انتخاب کنید.');
             transactionData.account_id = targetAccountId;
         }
 
@@ -373,32 +417,24 @@
             const { error: txError } = await supabaseClient.from('transactions').insert([transactionData]);
             if (txError) throw txError;
 
-            if (type === 'پرداخت') {
+            if (type === 'پرداخت' || type === 'دریافت') {
                 const acc = accountsList.find(a => a.id === targetAccountId);
-                const newBalance = parseFloat(acc.balance) - amount;
-                await supabaseClient.from('accounts').update({ balance: newBalance }).eq('id', targetAccountId);
-            } else if (type === 'دریافت') {
-                const acc = accountsList.find(a => a.id === targetAccountId);
-                const newBalance = parseFloat(acc.balance) + amount;
+                const newBalance = type === 'پرداخت' ? parseFloat(acc.balance) - amount : parseFloat(acc.balance) + amount;
                 await supabaseClient.from('accounts').update({ balance: newBalance }).eq('id', targetAccountId);
             } else if (type === 'انتقال موجودی') {
                 const fromAcc = accountsList.find(a => a.id === fromAccId);
                 const toAcc = accountsList.find(a => a.id === toAccId);
-
-                const newFromBalance = parseFloat(fromAcc.balance) - amount;
-                const newToBalance = parseFloat(toAcc.balance) + amount;
-
-                await supabaseClient.from('accounts').update({ balance: newFromBalance }).eq('id', fromAccId);
-                await supabaseClient.from('accounts').update({ balance: newToBalance }).eq('id', toAccId);
+                await supabaseClient.from('accounts').update({ balance: parseFloat(fromAcc.balance) - amount }).eq('id', fromAccId);
+                await supabaseClient.from('accounts').update({ balance: parseFloat(toAcc.balance) + amount }).eq('id', toAccId);
             }
 
-            alert('✅ تراکنش با موفقیت ثبت شد و موجودی حساب‌ها به‌روزرسانی گردید!');
+            alert('✅ تراکنش ثبت شد و موجودی به‌روزرسانی گردید!');
             document.getElementById('transactionForm').reset();
             setLocalDateTime();
             handleTransactionTypeChange();
             await loadAccounts();
         } catch (err) {
-            alert('❌ خطا در ثبت تراکنش: ' + err.message);
+            alert('❌ خطا در ثبت: ' + err.message);
         }
     });
 </script>
