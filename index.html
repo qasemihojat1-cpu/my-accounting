@@ -749,7 +749,8 @@
             return;
         }
         if (!data || data.length === 0) {
-            const { error: seedError } = await supabaseClient.from('categories').insert(defaultCategories);
+            const userCategories = defaultCategories.map(category => ({ ...category, user_id: currentUser.id }));
+            const { error: seedError } = await supabaseClient.from('categories').insert(userCategories);
             if (seedError) {
                 console.error('خطا در ثبت دسته‌بندی‌های اولیه:', seedError);
                 categoriesList = [];
@@ -1080,7 +1081,7 @@
             return;
         }
 
-        const { error } = await supabaseClient.from('categories').insert([{ type, category, subcategory }]);
+        const { error } = await supabaseClient.from('categories').insert([{ type, category, subcategory, user_id: currentUser.id }]);
         if (error) {
             showCategoryStatus('ثبت دسته‌بندی انجام نشد: ' + error.message, 'error');
             return;
@@ -1102,7 +1103,9 @@
         const name = document.getElementById('modal_acc_name').value;
         const branch = document.getElementById('modal_acc_branch').value;
         const balance = parseFloat(document.getElementById('modal_acc_balance').value);
-        const { data } = await supabaseClient.from('accounts').insert([{ name, branch, balance }]).select();
+        const { data, error } = await supabaseClient.from('accounts').insert([{ name, branch, balance, user_id: currentUser.id }]).select();
+        if (error) return alert('❌ ثبت حساب انجام نشد: ' + error.message);
+        if (!data || !data.length) return alert('❌ حساب ثبت نشد؛ لطفاً دوباره تلاش کن.');
         alert('✅ حساب اضافه شد!');
         closeModal('addAccountModal');
         await loadAccounts();
@@ -1117,7 +1120,7 @@
         const date = document.getElementById('transaction_date').value;
         const desc = document.getElementById('description').value;
 
-        let data = { type, amount, transaction_date: date, description: desc };
+        let data = { type, amount, transaction_date: date, description: desc, user_id: currentUser.id };
         
         if (type === 'انتقال موجودی') {
             const fromId = document.getElementById('from_account_id').value;
