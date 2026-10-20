@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حسابداری شخصی من</title>
+    <!-- استایل‌های موبایل‌پسند و زیبا -->
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #f4f6f9; margin: 0; padding: 15px; color: #333; }
+        .container { max-width: 450px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h2 { text-align: center; color: #1a73e8; margin-bottom: 20px; }
+        label { display: block; margin-top: 12px; font-weight: bold; font-size: 14px; }
+        input, select, button { width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: Tahoma, sans-serif; }
+        button { background: #1a73e8; color: white; border: none; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 20px; transition: background 0.3s; }
+        button:hover { background: #1557b0; }
+        #network-status { text-align: center; font-size: 13px; margin-bottom: 15px; padding: 6px; border-radius: 6px; background: #e8f0fe; color: #1a73e8; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>حسابداری شخصی</h2>
+    <div id="network-status">در حال بررسی وضعیت اتصال...</div>
+
+    <form id="transactionForm">
+        <label>نوع تراکنش:</label>
+        <select id="type" required>
+            <option value="expense">هزینه</option>
+            <option value="income">درآمد</option>
+            <option value="lend">قرض دادم</option>
+            <option value="borrow">قرض گرفتم</option>
+        </select>
+
+        <label>مبلغ (تومان):</label>
+        <input type="number" id="amount" placeholder="مثلاً 50000" required>
+
+        <label>تاریخ:</label>
+        <input type="date" id="date" required>
+
+        <label>توضیحات:</label>
+        <input type="text" id="description" placeholder="مثلاً خرید از سوپرمارکت...">
+
+        <button type="submit">ثبت تراکنش</button>
+    </form>
+</div>
+
+<!-- کتابخانه اتصال به Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+    // اطلاعات اتصال به Supabase شما (این مقادیر را از پنل سوپاست بیس خود بردارید)
+    const SUPABASE_URL = 'https://myqtpfdohayrhqmafqrj.supabase.co/rest/v1/';
+    const SUPABASE_ANON_KEY = 'sb_publishable_6iFdGoWIvKrGKjfF_T-zXQ_-717yY63';
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // تنظیم تاریخ امروز به صورت پیش‌فرض در فرم
+    document.getElementById('date').valueAsDate = new Date();
+
+    // بررسی وضعیت آنلاین/آفلاین
+    function updateNetworkStatus() {
+        const statusEl = document.getElementById('network-status');
+        if (navigator.onLine) {
+            statusEl.innerText = '🟢 آنلاین - متصل به سرور ابری';
+            statusEl.style.background = '#e6f4ea';
+            statusEl.style.color = '#137333';
+        } else {
+            statusEl.innerText = '🔴 آفلاین - ذخیره روی حافظه موقت گوشی';
+            statusEl.style.background = '#fef7e0';
+            statusEl.style.color = '#b06000';
+        }
+    }
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+    window.addEventListener('load', updateNetworkStatus);
+
+    // ثبت تراکنش
+    document.getElementById('transactionForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const amount = parseFloat(document.getElementById('amount').value);
+        const type = document.getElementById('type').value;
+        const date = document.getElementById('date').value;
+        const description = document.getElementById('description').value;
+
+        const transactionData = {
+            amount: amount,
+            type: type,
+            date: date,
+            description: description
+        };
+
+        if (navigator.onLine) {
+            try {
+                // ارسال مستقیم به Supabase
+                const { data, error } = await supabaseClient
+                    .from('transactions')
+                    .insert([transactionData]);
+
+                if (error) throw error;
+
+                alert('✅ تراکنش با موفقیت در دیتابیس ثبت شد!');
+                document.getElementById('transactionForm').reset();
+                document.getElementById('date').valueAsDate = new Date();
+            } catch (err) {
+                console.error(err);
+                alert('❌ خطا در ثبت تراکنش: ' + err.message);
+            }
+        } else {
+            // ذخیره آفلاین در حافظه گوشی اگر اینترنت قطع بود
+            let offlineList = JSON.parse(localStorage.getItem('offline_tx')) || [];
+            offlineList.push(transactionData);
+            localStorage.setItem('offline_tx', JSON.stringify(offlineList));
+            alert('⚠️ اینترنت قطع است! تراکنش به صورت آفلاین روی گوشی ذخیره شد.');
+            document.getElementById('transactionForm').reset();
+            document.getElementById('date').valueAsDate = new Date();
+        }
+    });
+</script>
+
+</body>
+</html>
