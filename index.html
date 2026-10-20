@@ -92,7 +92,15 @@
         .hidden { display: none !important; }
         .modal-overlay { position: fixed; inset: 0; width: 100%; height: 100%; padding: 18px; background: rgba(11,27,46,.56); backdrop-filter: blur(7px); display: flex; justify-content: center; align-items: center; z-index: 1000; overflow-y: auto; }
         .modal-content { background: var(--surface); padding: 28px 25px; border: 1px solid rgba(255,255,255,.7); border-radius: 22px; width: 100%; max-width: 430px; box-shadow: 0 25px 70px rgba(8,24,42,.25); margin: auto; max-height: 90vh; overflow-y: auto; }
-        .cat-list { max-height: 250px; overflow-y: auto; margin-top: 15px; border: 1px solid var(--border); border-radius: 14px; padding: 15px; background: #f9fbfc; }
+        .cat-tools { display: grid; grid-template-columns: 1fr 145px; gap: 8px; margin-top: 12px; }
+        .cat-tools input, .cat-tools select { min-height: 43px; font-size: 13px; }
+        .cat-summary { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 10px; color: var(--text-muted); font-size: 12px; }
+        .cat-list { max-height: 280px; overflow-y: auto; margin-top: 10px; border: 1px solid var(--border); border-radius: 14px; padding: 13px; background: #f9fbfc; }
+        .cat-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 22px 8px; }
+        .cat-status { display: none; padding: 10px 12px; border-radius: 10px; margin-top: 10px; font-size: 12px; font-weight: 700; }
+        .cat-status.show { display: block; }
+        .cat-status.error { color: #a92f39; background: #fff1f1; border: 1px solid #f0d5d6; }
+        .cat-status.success { color: #12664f; background: #e8f5ef; border: 1px solid #d3eadf; }
         .tree-type { font-weight: 900; margin-top: 13px; color: var(--primary); font-size: 14px; border-bottom: 2px solid #e4ebf0; padding-bottom: 7px; }
         .tree-type:first-child { margin-top: 0; }
         .tree-main { margin-right: 14px; font-weight: 800; margin-top: 12px; color: var(--secondary); font-size: 13px; }
@@ -100,6 +108,7 @@
         .tree-sub:last-child { border-bottom: none; }
         .cat-delete { color: var(--danger); cursor: pointer; font-weight: 900; padding: 4px 8px; border-radius: 7px; }
         .cat-delete:hover { background: #fff0f0; }
+        .tree-sub-label { min-width: 0; overflow-wrap: anywhere; }
         #transactionForm > label:first-child { margin-top: 0; }
         #transactionForm > button[type="submit"] { background: linear-gradient(135deg, var(--secondary), #117455); box-shadow: 0 8px 18px rgba(22,133,102,.19); }
         #transactionForm > button[type="submit"]:hover { background: linear-gradient(135deg, #117455, #0d6248); }
@@ -115,6 +124,7 @@
         ::-webkit-scrollbar-thumb:hover { background: #9eafbd; }
 
         @media (max-width: 600px) {
+            .cat-tools { grid-template-columns: 1fr; }
             body { padding: 14px 10px; }
             .container { padding: 26px 18px; border-radius: 21px; margin-bottom: 14px; }
             #app-section { padding: 24px 17px; }
@@ -200,6 +210,7 @@
                     <option value="هزینه">🔴 هزینه</option>
                     <option value="درآمد">🟢 درآمد</option>
                     <option value="دارایی">🔵 دارایی</option>
+                    <option value="بدهی و طلب">🟠 بدهی و طلب</option>
                 </select>
             </div>
             <div class="category-step hidden" id="cat_main_container">
@@ -245,8 +256,20 @@
 <!-- مودال مدیریت دسته‌بندی‌ها -->
 <div id="manageCategoryModal" class="modal-overlay hidden">
     <div class="modal-content">
-        <h3>ساختار درختی دسته‌بندی‌ها</h3>
+        <h3>مدیریت دسته‌بندی‌ها</h3>
+        <div class="cat-tools">
+            <input type="search" id="category_search" placeholder="جست‌وجوی دسته یا زیردسته..." oninput="renderCategoryList()" aria-label="جست‌وجوی دسته‌بندی">
+            <select id="category_filter_type" onchange="renderCategoryList()" aria-label="فیلتر نوع دسته‌بندی">
+                <option value="همه">همه نوع‌ها</option>
+                <option value="هزینه">🔴 هزینه</option>
+                <option value="درآمد">🟢 درآمد</option>
+                <option value="دارایی">🔵 دارایی</option>
+                <option value="بدهی و طلب">🟠 بدهی و طلب</option>
+            </select>
+        </div>
+        <div class="cat-summary"><span id="category_count">۰ زیردسته</span><span>برای حذف، روی × بزنید</span></div>
         <div class="cat-list" id="category_list_container"></div>
+        <div id="category_status" class="cat-status" role="status" aria-live="polite"></div>
         <hr style="border-top: 1px solid #eee; margin: 15px 0;">
         <h4>افزودن شاخه جدید</h4>
         <form id="modalCategoryForm">
@@ -546,15 +569,25 @@
 
     async function loadCategories() {
         if (!currentUser) return;
-        const { data } = await supabaseClient.from('categories').select('*');
-        
+        const { data, error } = await supabaseClient.from('categories').select('*');
+        if (error) {
+            console.error('خطا در بارگذاری دسته‌بندی‌ها:', error);
+            alert('بارگذاری دسته‌بندی‌ها ناموفق بود: ' + error.message);
+            return;
+        }
         if (!data || data.length === 0) {
-            await supabaseClient.from('categories').insert(defaultCategories);
-            return loadCategories(); 
+            const { error: seedError } = await supabaseClient.from('categories').insert(defaultCategories);
+            if (seedError) {
+                console.error('خطا در ثبت دسته‌بندی‌های اولیه:', seedError);
+                categoriesList = [];
+                handleCatTypeChange();
+                return;
+            }
+            return loadCategories();
         }
 
         categoriesList = data;
-        handleCatTypeChange(); 
+        handleCatTypeChange();
     }
 
     function handleCatTypeChange() {
@@ -601,60 +634,127 @@
 
     function openCategoryModal() {
         document.getElementById('manageCategoryModal').classList.remove('hidden');
+        document.getElementById('category_status').className = 'cat-status';
+        document.getElementById('category_search').value = '';
+        document.getElementById('category_filter_type').value = 'همه';
         renderCategoryList();
+    }
+
+    function showCategoryStatus(message, kind = 'success') {
+        const el = document.getElementById('category_status');
+        el.textContent = message;
+        el.className = `cat-status show ${kind}`;
+    }
+
+    function normalizeCategoryText(value) {
+        return String(value ?? '').trim().replace(/\s+/g, ' ');
     }
 
     function renderCategoryList() {
         const container = document.getElementById('category_list_container');
+        const search = normalizeCategoryText(document.getElementById('category_search')?.value).toLocaleLowerCase('fa');
+        const typeFilter = document.getElementById('category_filter_type')?.value || 'همه';
         container.innerHTML = '';
-        
-        const types = ['هزینه', 'درآمد', 'دارایی'];
-        const typeIcons = {'هزینه': '🔴', 'درآمد': '🟢', 'دارایی': '🔵'};
-        
+
+        const filtered = categoriesList.filter(c => {
+            const typeMatches = typeFilter === 'همه' || c.type === typeFilter;
+            const searchMatches = !search || `${c.type} ${c.category} ${c.subcategory}`.toLocaleLowerCase('fa').includes(search);
+            return typeMatches && searchMatches;
+        });
+        document.getElementById('category_count').textContent = `${filtered.length.toLocaleString('fa-IR')} زیردسته`;
+
+        if (!filtered.length) {
+            const empty = document.createElement('div');
+            empty.className = 'cat-empty';
+            empty.textContent = categoriesList.length ? 'دسته‌بندی مطابق جست‌وجو پیدا نشد.' : 'هنوز دسته‌بندی‌ای ثبت نشده است.';
+            container.appendChild(empty);
+            return;
+        }
+
+        const types = ['هزینه', 'درآمد', 'دارایی', 'بدهی و طلب'];
+        const typeIcons = {'هزینه': '🔴', 'درآمد': '🟢', 'دارایی': '🔵', 'بدهی و طلب': '🟠'};
         types.forEach(type => {
-            const typeCats = categoriesList.filter(c => c.type === type);
-            if (typeCats.length === 0) return;
-            
+            const typeCats = filtered.filter(c => c.type === type);
+            if (!typeCats.length) return;
             const typeDiv = document.createElement('div');
             typeDiv.className = 'tree-type';
-            typeDiv.innerText = `${typeIcons[type]} ${type}‌ها`;
+            typeDiv.textContent = `${typeIcons[type] || '📌'} ${type}`;
             container.appendChild(typeDiv);
-            
-            const mains = [...new Set(typeCats.map(c => c.category))];
+
+            const mains = [...new Set(typeCats.map(c => c.category))].sort((a,b) => a.localeCompare(b, 'fa'));
             mains.forEach(main => {
                 const mainDiv = document.createElement('div');
                 mainDiv.className = 'tree-main';
-                mainDiv.innerText = `📁 ${main}`;
+                mainDiv.textContent = `📁 ${main}`;
                 container.appendChild(mainDiv);
-                
-                const subs = typeCats.filter(c => c.category === main);
-                subs.forEach(sub => {
-                    const subDiv = document.createElement('div');
-                    subDiv.className = 'tree-sub';
-                    subDiv.innerHTML = `<span style="display:flex; align-items:center;">└─ 📄 &nbsp; ${sub.subcategory}</span> <span class="cat-delete" onclick="deleteCategory('${sub.id}')" title="حذف شاخه">✖</span>`;
-                    container.appendChild(subDiv);
-                });
+
+                typeCats.filter(c => c.category === main)
+                    .sort((a,b) => String(a.subcategory).localeCompare(String(b.subcategory), 'fa'))
+                    .forEach(sub => {
+                        const subDiv = document.createElement('div');
+                        subDiv.className = 'tree-sub';
+                        const label = document.createElement('span');
+                        label.className = 'tree-sub-label';
+                        label.textContent = `└─ 📄 ${sub.subcategory}`;
+                        const del = document.createElement('button');
+                        del.type = 'button';
+                        del.className = 'cat-delete';
+                        del.textContent = '×';
+                        del.title = 'حذف زیردسته';
+                        del.setAttribute('aria-label', `حذف ${sub.subcategory}`);
+                        del.onclick = () => deleteCategory(sub.id);
+                        subDiv.append(label, del);
+                        container.appendChild(subDiv);
+                    });
             });
         });
     }
 
     async function deleteCategory(id) {
-        if(!confirm('آیا از حذف این شاخه مطمئن هستید؟')) return;
-        await supabaseClient.from('categories').delete().eq('id', id);
+        const category = categoriesList.find(c => String(c.id) === String(id));
+        if (!category) return;
+        const used = confirm(`زیردسته «${category.subcategory}» از دسته «${category.category}» حذف شود؟\n\nتوجه: این کار ممکن است روی تراکنش‌های قبلی اثر نگذارد، اما این زیردسته دیگر برای ثبت تراکنش جدید نمایش داده نمی‌شود.`);
+        if (!used) return;
+        const { error } = await supabaseClient.from('categories').delete().eq('id', id);
+        if (error) {
+            showCategoryStatus('حذف انجام نشد: ' + error.message, 'error');
+            return;
+        }
         await loadCategories();
         renderCategoryList();
+        showCategoryStatus('زیردسته با موفقیت حذف شد.');
     }
 
     document.getElementById('modalCategoryForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const type = document.getElementById('cat_type').value;
-        const category = document.getElementById('cat_category').value;
-        const subcategory = document.getElementById('cat_subcategory').value;
-        
-        await supabaseClient.from('categories').insert([{ type, category, subcategory }]);
-        document.getElementById('modalCategoryForm').reset();
+        const category = normalizeCategoryText(document.getElementById('cat_category').value);
+        const subcategory = normalizeCategoryText(document.getElementById('cat_subcategory').value);
+        if (!type || !category || !subcategory) {
+            showCategoryStatus('لطفاً نوع، دسته اصلی و زیردسته را کامل وارد کنید.', 'error');
+            return;
+        }
+
+        const duplicate = categoriesList.some(c =>
+            String(c.type).trim() === type &&
+            normalizeCategoryText(c.category).toLocaleLowerCase('fa') === category.toLocaleLowerCase('fa') &&
+            normalizeCategoryText(c.subcategory).toLocaleLowerCase('fa') === subcategory.toLocaleLowerCase('fa')
+        );
+        if (duplicate) {
+            showCategoryStatus('این زیردسته قبلاً برای همین نوع و دسته اصلی ثبت شده است.', 'error');
+            return;
+        }
+
+        const { error } = await supabaseClient.from('categories').insert([{ type, category, subcategory }]);
+        if (error) {
+            showCategoryStatus('ثبت دسته‌بندی انجام نشد: ' + error.message, 'error');
+            return;
+        }
+        document.getElementById('cat_category').value = category;
+        document.getElementById('cat_subcategory').value = '';
         await loadCategories();
         renderCategoryList();
+        showCategoryStatus(`زیردسته «${subcategory}» با موفقیت اضافه شد.`);
     });
 
     function checkAddAccountSelection(el) {
