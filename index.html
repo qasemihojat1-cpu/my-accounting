@@ -100,9 +100,12 @@
 
         .btn-logout { background: #ef4444; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2); margin-top: 30px; }
         .btn-logout:hover { background: #dc2626; box-shadow: 0 6px 12px -2px rgba(239, 68, 68, 0.3); }
+        
+        .btn-text { background: transparent; color: var(--primary); box-shadow: none; padding: 5px; margin-top: 5px; font-size: 13px; width: auto; font-weight: 600; display: inline-block; }
+        .btn-text:hover { background: transparent; color: var(--primary-hover); transform: none; text-decoration: underline; }
 
         #network-status { text-align: center; font-size: 12px; margin-bottom: 25px; padding: 8px; border-radius: 8px; background: #eff6ff; color: var(--primary); font-weight: 600; }
-        .user-email-badge { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 15px; }
+        .user-email-badge { text-align: center; font-size: 14px; font-weight: bold; color: var(--text-main); margin-bottom: 15px; padding: 10px; background: var(--input-bg); border-radius: 10px; }
 
         .hidden { display: none !important; }
 
@@ -114,16 +117,35 @@
 
 <!-- بخش ورود و ثبت‌نام -->
 <div id="auth-section" class="container">
-    <h2>ورود به سیستم</h2>
+    <h2 id="auth-title">ورود به سیستم</h2>
     
+    <div id="username-div" class="hidden">
+        <label>نام کاربری:</label>
+        <input type="text" id="auth_username" placeholder="مثلاً Ali_Accountant">
+    </div>
+
     <label>ایمیل:</label>
     <input type="email" id="auth_email" placeholder="name@example.com" required>
     
     <label>رمز عبور:</label>
     <input type="password" id="auth_password" placeholder="حداقل ۶ کاراکتر" required>
     
-    <button onclick="handleLogin()">ورود به حساب</button>
-    <button class="btn-cancel" onclick="handleSignUp()">ثبت‌نام کاربر جدید</button>
+    <!-- دکمه‌های ورود -->
+    <div id="login-buttons">
+        <button onclick="handleLogin()">ورود به حساب</button>
+        <div style="text-align: right;">
+            <button type="button" class="btn-text" onclick="handleResetPassword()">فراموشی رمز عبور؟</button>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <button type="button" class="btn-secondary" onclick="toggleAuthMode('signup')">ثبت‌نام حساب کاربری جدید</button>
+    </div>
+
+    <!-- دکمه‌های ثبت نام -->
+    <div id="signup-buttons" class="hidden">
+        <button onclick="handleSignUp()">ثبت‌نام در سیستم</button>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <button type="button" class="btn-cancel" onclick="toggleAuthMode('login')">بازگشت به صفحه ورود</button>
+    </div>
 </div>
 
 <!-- بخش اصلی اپلیکیشن (پنل کاربری) -->
@@ -213,12 +235,20 @@
     let activeSelectElement = null;
     let accountsList = [];
 
-    // بررسی وضعیت ورود کاربر هنگام باز شدن سایت
     window.addEventListener('load', async () => {
         const { data: { session } } = await supabaseClient.auth.getSession();
         handleSession(session);
         
-        supabaseClient.auth.onAuthStateChange((_event, session) => {
+        // گوش دادن به تغییرات وضعیت (ورود، خروج، و بازیابی رمز عبور)
+        supabaseClient.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                const newPassword = prompt("لطفاً رمز عبور جدید خود را وارد کنید:");
+                if (newPassword) {
+                    const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+                    if (error) alert("❌ خطا در تغییر رمز عبور: " + error.message);
+                    else alert("✅ رمز عبور با موفقیت تغییر کرد!");
+                }
+            }
             handleSession(session);
         });
 
@@ -226,6 +256,21 @@
         window.addEventListener('online', updateNetworkStatus);
         window.addEventListener('offline', updateNetworkStatus);
     });
+
+    // مدیریت رابط کاربری ورود و ثبت‌نام
+    function toggleAuthMode(mode) {
+        if (mode === 'signup') {
+            document.getElementById('auth-title').innerText = 'ثبت‌نام کاربر جدید';
+            document.getElementById('username-div').classList.remove('hidden');
+            document.getElementById('login-buttons').classList.add('hidden');
+            document.getElementById('signup-buttons').classList.remove('hidden');
+        } else {
+            document.getElementById('auth-title').innerText = 'ورود به سیستم';
+            document.getElementById('username-div').classList.add('hidden');
+            document.getElementById('login-buttons').classList.remove('hidden');
+            document.getElementById('signup-buttons').classList.add('hidden');
+        }
+    }
 
     async function handleSession(session) {
         const authSection = document.getElementById('auth-section');
@@ -235,7 +280,11 @@
             currentUser = session.user;
             authSection.classList.add('hidden');
             appSection.classList.remove('hidden');
-            document.getElementById('user-info').innerText = `کاربر: ${currentUser.email}`;
+            
+            // نمایش نام کاربری (اگر ثبت کرده باشد) در غیر این صورت ایمیل
+            const username = currentUser.user_metadata?.username || currentUser.email;
+            document.getElementById('user-info').innerText = `سلام، ${username} 👋`;
+            
             setLocalDateTime();
             await loadAccounts();
         } else {
@@ -245,17 +294,27 @@
         }
     }
 
-    // ثبت نام کاربر جدید
+    // ثبت‌نام با نام کاربری
     async function handleSignUp() {
+        const username = document.getElementById('auth_username').value;
         const email = document.getElementById('auth_email').value;
         const password = document.getElementById('auth_password').value;
-        if (!email || !password) return alert('لطفاً ایمیل و رمز عبور را وارد کنید.');
         
-        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (!email || !password || !username) return alert('لطفاً تمامی فیلدها را پر کنید.');
+        
+        const { data, error } = await supabaseClient.auth.signUp({ 
+            email, 
+            password,
+            options: {
+                data: { username: username } // ذخیره نام کاربری در متادیتای کاربر
+            }
+        });
+        
         if (error) {
             alert('خطا در ثبت نام: ' + error.message);
         } else {
-            alert('ثبت‌نام با موفقیت انجام شد! اکنون می‌توانید وارد شوید.');
+            alert('✅ ثبت‌نام با موفقیت انجام شد! اکنون می‌توانید وارد شوید.');
+            toggleAuthMode('login');
         }
     }
 
@@ -266,7 +325,23 @@
         if (!email || !password) return alert('لطفاً ایمیل و رمز عبور را وارد کنید.');
 
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) alert('ایمیل یا رمز عبور اشتباه است.');
+        if (error) alert('❌ ایمیل یا رمز عبور اشتباه است.');
+    }
+
+    // فراموشی رمز عبور
+    async function handleResetPassword() {
+        const email = document.getElementById('auth_email').value;
+        if (!email) return alert('لطفاً ابتدا ایمیل خود را در کادر بالا وارد کنید تا لینک بازیابی ارسال شود.');
+        
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin // بازگشت کاربر به همین سایت پس از کلیک روی لینک ایمیل
+        });
+        
+        if (error) {
+            alert('❌ خطا: ' + error.message);
+        } else {
+            alert('📧 لینک بازیابی رمز عبور به ایمیل شما ارسال شد. (پوشه اسپم را نیز چک کنید)');
+        }
     }
 
     // خروج از سیستم
@@ -376,7 +451,7 @@
             if (error) throw error;
 
             const newAccount = data[0];
-            alert('✅ حساب جدید اضافه شد!');
+            alert('✅ حساب جدید با موفقیت اضافه شد!');
             closeModal();
             await loadAccounts();
 
@@ -384,7 +459,7 @@
                 activeSelectElement.value = newAccount.id;
             }
         } catch (err) {
-            alert('❌ خطا: ' + err.message);
+            alert('❌ خطا در ثبت: ' + err.message);
         }
     });
 
