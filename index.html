@@ -225,6 +225,44 @@
         ::-webkit-scrollbar-thumb { background: #344253; }
         ::-webkit-scrollbar-thumb:hover { background: #4b5d70; }
         .category-picker-panel .hidden { display: none !important; }
+
+        /* تایپوگرافی فارسی و تجربه کاربری مدیریت دسته‌ها */
+        body, input, select, textarea, button { font-family: 'Vazirmatn', 'IRANSans', Tahoma, sans-serif; }
+        body { font-size: 14px; letter-spacing: -.12px; line-height: 1.85; }
+        h2 { font-size: clamp(22px, 3vw, 26px); letter-spacing: -.55px; line-height: 1.5; }
+        h3 { font-size: 18px; line-height: 1.6; }
+        label { font-size: 12.5px; letter-spacing: -.1px; }
+        input, select, textarea { font-size: 13.5px; font-weight: 500; }
+        button { font-size: 13px; letter-spacing: -.1px; }
+        .field-hint { margin-top: 6px; color: #8797aa; font-size: 11px; line-height: 1.7; }
+        #transaction_date_jalali { direction: ltr; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: .3px; }
+        #manageCategoryModal .modal-content { max-width: 600px; padding: 24px; }
+        #manageCategoryModal h3 { text-align: right; margin-bottom: 5px; font-size: 20px; }
+        #manageCategoryModal h3::after { content: 'دسته‌ها را جست‌وجو، مرور، حذف یا به‌سادگی اضافه کن'; display: block; color: #8d9bad; font-size: 11px; font-weight: 500; margin-top: 4px; }
+        .cat-tools { grid-template-columns: minmax(0,1fr) 165px; gap: 10px; margin: 18px 0 12px; }
+        .cat-summary { align-items: center; padding: 10px 12px; margin-top: 0; background: #17212c; border: 1px solid #283747; border-radius: 11px; }
+        #category_count { color: #6ee7b7; font-weight: 800; }
+        .cat-list { max-height: 340px; padding: 14px; margin-top: 10px; }
+        .tree-type { margin: 8px 0 12px; padding: 9px 11px; border: 1px solid #2a3a4b; border-radius: 10px; background: #17212c; color: #dbeafe; }
+        .tree-main { margin: 13px 12px 5px 0; padding-right: 9px; border-right: 2px solid #34d399; }
+        .tree-sub { margin-right: 27px; padding: 8px 10px; border: 1px solid transparent; border-bottom-color: #26313e; border-radius: 8px; }
+        .tree-sub:hover { background: #151f29; border-color: #2a3a4b; }
+        .tree-sub-label { line-height: 1.7; }
+        .cat-delete { flex: 0 0 auto; width: 30px; min-height: 30px; margin: 0; padding: 0; background: #2a1b22; color: #fb7185; border: 1px solid #52303b; font-size: 18px; box-shadow: none; }
+        .cat-delete:hover { background: #45212d; color: #fecdd3; transform: none; box-shadow: none; }
+        #modalCategoryForm { margin-top: 12px; padding: 16px; border: 1px solid #2a3543; border-radius: 15px; background: #0e141b; }
+        #modalCategoryForm h4 { margin: 0 0 8px; }
+        #modalCategoryForm label { margin-top: 11px; }
+        #modalCategoryForm button { margin-top: 14px; }
+        #category_status { line-height: 1.8; }
+        @media (max-width: 600px) {
+            #manageCategoryModal .modal-content { padding: 20px 14px; }
+            .cat-tools { grid-template-columns: 1fr; }
+            .cat-summary { font-size: 11px; }
+            .cat-list { max-height: 300px; padding: 9px; }
+            .tree-sub { margin-right: 16px; }
+            #modalCategoryForm { padding: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -320,8 +358,10 @@
 
         <label>مبلغ (تومان):</label>
         <input type="number" id="amount" placeholder="مثلاً ۵۰,۰۰۰" required>
-        <label>تاریخ و ساعت:</label>
-        <input type="datetime-local" id="transaction_date" required>
+        <label for="transaction_date_jalali">تاریخ و ساعت (شمسی):</label>
+        <input type="text" id="transaction_date_jalali" inputmode="numeric" autocomplete="off" placeholder="۱۴۰۵/۰۷/۲۸ ۱۴:۳۰" aria-describedby="jalali-date-hint" required>
+        <div id="jalali-date-hint" class="field-hint">تاریخ به تقویم شمسی وارد می‌شود؛ ساعت به‌صورت ۲۴ ساعته است.</div>
+        <input type="datetime-local" id="transaction_date" tabindex="-1" aria-hidden="true" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
         <label>توضیحات:</label>
         <input type="text" id="description" placeholder="توضیحات تراکنش...">
         
@@ -363,16 +403,18 @@
         <div class="cat-list" id="category_list_container"></div>
         <div id="category_status" class="cat-status" role="status" aria-live="polite"></div>
         <hr style="border-top: 1px solid #eee; margin: 15px 0;">
-        <h4>افزودن شاخه جدید</h4>
+        <h4>＋ افزودن زیردسته جدید</h4>
         <form id="modalCategoryForm">
             <label>نوع:</label>
             <select id="cat_type" required>
                 <option value="هزینه">هزینه</option>
                 <option value="درآمد">درآمد</option>
                 <option value="دارایی">دارایی</option>
+                <option value="بدهی و طلب">بدهی و طلب</option>
             </select>
             <label>دسته اصلی (سطح ۱):</label>
-            <input type="text" id="cat_category" placeholder="مثلاً اغذیه، مسکن..." required>
+            <input type="text" id="cat_category" list="existing_main_categories" placeholder="نام دسته جدید یا انتخاب دسته موجود..." autocomplete="off" required>
+            <datalist id="existing_main_categories"></datalist>
             <label>زیردسته (سطح ۲):</label>
             <input type="text" id="cat_subcategory" placeholder="مثلاً تنقلات، اجاره..." required>
             <button type="submit" class="btn-secondary">افزودن به درختواره</button>
@@ -611,11 +653,57 @@
         if (error) alert('❌ خطا: ' + error.message); else alert('📧 لینک بازیابی ارسال شد.');
     }
 
+    const persianCalendar = new Intl.DateTimeFormat('fa-IR-u-ca-persian-nu-latn', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    function toPersianDigits(value) { return String(value).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]); }
+    function toEnglishDigits(value) { return String(value).replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))); }
+    function jalaliParts(date) {
+        const parts = Object.fromEntries(persianCalendar.formatToParts(date).filter(p => p.type !== 'literal').map(p => [p.type, Number(p.value)]));
+        return { year: parts.year, month: parts.month, day: parts.day };
+    }
+    function formatJalaliDateTime(date) {
+        const j = jalaliParts(date);
+        return `${toPersianDigits(String(j.year).padStart(4,'0'))}/${toPersianDigits(String(j.month).padStart(2,'0'))}/${toPersianDigits(String(j.day).padStart(2,'0'))} ${toPersianDigits(String(date.getHours()).padStart(2,'0'))}:${toPersianDigits(String(date.getMinutes()).padStart(2,'0'))}`;
+    }
+    function jalaliToGregorianDate(jy, jm, jd) {
+        // Find the matching Gregorian day using the browser's Persian-calendar implementation.
+        const start = new Date(jy + 621, 0, 1, 12, 0, 0);
+        for (let i = -30; i < 390; i++) {
+            const candidate = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i, 12, 0, 0);
+            const j = jalaliParts(candidate);
+            if (j.year === jy && j.month === jm && j.day === jd) return candidate;
+        }
+        return null;
+    }
+    function syncJalaliDateToStorage() {
+        const visible = document.getElementById('transaction_date_jalali');
+        const hidden = document.getElementById('transaction_date');
+        const raw = toEnglishDigits(visible.value.trim());
+        const match = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?$/);
+        if (!match) { hidden.value = ''; visible.setCustomValidity('تاریخ را به شکل ۱۴۰۵/۰۷/۲۸ یا همراه ساعت ۱۴:۳۰ وارد کنید.'); return false; }
+        const jy = Number(match[1]), jm = Number(match[2]), jd = Number(match[3]);
+        const hh = match[4] === undefined ? 0 : Number(match[4]), mm = match[5] === undefined ? 0 : Number(match[5]);
+        const date = jalaliToGregorianDate(jy, jm, jd);
+        if (!date || hh > 23 || mm > 59 || hh < 0 || mm < 0) { hidden.value = ''; visible.setCustomValidity('تاریخ یا ساعت واردشده معتبر نیست.'); return false; }
+        const iso = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+        hidden.value = iso;
+        visible.setCustomValidity('');
+        return true;
+    }
     function setLocalDateTime() {
         const now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById('transaction_date').value = now.toISOString().slice(0, 16);
+        document.getElementById('transaction_date_jalali').value = formatJalaliDateTime(now);
+        syncJalaliDateToStorage();
     }
+    document.getElementById('transaction_date_jalali').addEventListener('input', syncJalaliDateToStorage);
+    document.getElementById('transaction_date_jalali').addEventListener('blur', function() {
+        if (syncJalaliDateToStorage()) {
+            const m = toEnglishDigits(this.value.trim()).match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?$/);
+            const d = jalaliToGregorianDate(Number(m[1]),Number(m[2]),Number(m[3]));
+            d.setHours(m[4] === undefined ? 0 : Number(m[4]), m[5] === undefined ? 0 : Number(m[5]),0,0);
+            this.value = formatJalaliDateTime(d);
+            syncJalaliDateToStorage();
+        }
+    });
 
     function updateNetworkStatus() {
         const el = document.getElementById('network-status');
@@ -875,7 +963,17 @@
         document.getElementById('category_search').value = '';
         document.getElementById('category_filter_type').value = 'همه';
         renderCategoryList();
+        refreshMainCategorySuggestions();
     }
+
+    function refreshMainCategorySuggestions() {
+        const list = document.getElementById('existing_main_categories');
+        if (!list) return;
+        const type = document.getElementById('cat_type').value;
+        const mains = [...new Set(categoriesList.filter(c => c.type === type).map(c => c.category))].sort((a,b) => a.localeCompare(b, 'fa'));
+        list.innerHTML = mains.map(name => `<option value="${String(name).replace(/&/g,'&amp;').replace(/\"/g,'&quot;').replace(/</g,'&lt;')}"></option>`).join('');
+    }
+    document.getElementById('cat_type').addEventListener('change', refreshMainCategorySuggestions);
 
     function showCategoryStatus(message, kind = 'success') {
         const el = document.getElementById('category_status');
@@ -1015,6 +1113,7 @@
         e.preventDefault();
         const type = document.getElementById('type').value;
         const amount = parseFloat(document.getElementById('amount').value);
+        if (!syncJalaliDateToStorage()) return document.getElementById('transaction_date_jalali').reportValidity();
         const date = document.getElementById('transaction_date').value;
         const desc = document.getElementById('description').value;
 
