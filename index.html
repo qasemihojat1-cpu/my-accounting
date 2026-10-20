@@ -14,9 +14,14 @@
         button:hover { background: #1557b0; }
         .btn-secondary { background: #34a853; }
         .btn-secondary:hover { background: #2e8b45; }
+        .btn-cancel { background: #dc3545; margin-top: 8px; }
+        .btn-cancel:hover { background: #c82333; }
         #network-status { text-align: center; font-size: 13px; margin-bottom: 15px; padding: 6px; border-radius: 6px; background: #e8f0fe; color: #1a73e8; }
         .hidden { display: none; }
-        hr { border: 0; border-top: 1px solid #eee; margin: 25px 0; }
+        
+        /* استایل مودال (پنجره پاپ‌آپ) افزودن حساب */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -40,7 +45,7 @@
         <!-- فیلد حساب بانکی (برای پرداخت، دریافت، مغایرت) -->
         <div id="singleAccountDiv">
             <label>حساب بانکی:</label>
-            <select id="account_id">
+            <select id="account_id" onchange="checkAddAccountSelection(this)">
                 <option value="">انتخاب حساب بانکی...</option>
             </select>
         </div>
@@ -48,12 +53,12 @@
         <!-- فیلدهای انتقال موجودی (مبدا و مقصد) -->
         <div id="transferDiv" class="hidden">
             <label>انتقال از حساب (مبدا):</label>
-            <select id="from_account_id">
+            <select id="from_account_id" onchange="checkAddAccountSelection(this)">
                 <option value="">انتخاب حساب مبدا...</option>
             </select>
 
             <label>انتقال به حساب (مقصد):</label>
-            <select id="to_account_id">
+            <select id="to_account_id" onchange="checkAddAccountSelection(this)">
                 <option value="">انتخاب حساب مقصد...</option>
             </select>
         </div>
@@ -77,31 +82,32 @@
 
         <button type="submit">ثبت تراکنش</button>
     </form>
+</div>
 
-    <hr>
+<!-- پنجره مودال (پاپ‌آپ) افزودن حساب بانکی جدید -->
+<div id="addAccountModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h3>افزودن حساب بانکی جدید</h3>
+        <form id="modalAccountForm">
+            <label>نام حساب:</label>
+            <input type="text" id="modal_acc_name" placeholder="مثلاً بلو بانک، ملی..." required>
 
-    <!-- فرم تعریف حساب بانکی جدید -->
-    <form id="accountForm">
-        <h3>تعریف حساب بانکی جدید</h3>
-        
-        <label>نام حساب:</label>
-        <input type="text" id="acc_name" placeholder="مثلاً بلو بانک، ملی..." required>
+            <label>شعبه:</label>
+            <input type="text" id="modal_acc_branch" placeholder="مثلاً شعبه مرکزی...">
 
-        <label>شعبه:</label>
-        <input type="text" id="acc_branch" placeholder="مثلاً شعبه مرکزی...">
+            <label>مانده اولیه (تومان):</label>
+            <input type="number" id="modal_acc_balance" placeholder="0" value="0" required>
 
-        <label>مانده اولیه (تومان):</label>
-        <input type="number" id="acc_balance" placeholder="0" value="0" required>
-
-        <button type="submit" class="btn-secondary">ثبت حساب بانکی</button>
-    </form>
+            <button type="submit" class="btn-secondary">ثبت و انتخاب حساب</button>
+            <button type="button" class="btn-cancel" onclick="closeModal()">انصراف</button>
+        </form>
+    </div>
 </div>
 
 <!-- کتابخانه اتصال به Supabase نسخه پایدار ۲ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-    // اطلاعات اتصال به Supabase شما
     const SUPABASE_URL = 'https://myqtpfdohayrhqmafqrj.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_6iFdGoWIvKrGKjfF_T-zXQ_-717yY63';
     
@@ -112,7 +118,9 @@
         console.error('خطا در راه‌اندازی Supabase:', e);
     }
 
-    // تنظیم تاریخ و ساعت فعلی به صورت پیش‌فرض
+    // نگهداری عنصر انتخابی که کاربر خواسته در آن حساب جدید بسازد
+    let activeSelectElement = null;
+
     function setLocalDateTime() {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -120,7 +128,6 @@
     }
     setLocalDateTime();
 
-    // بررسی وضعیت اتصال
     function updateNetworkStatus() {
         const statusEl = document.getElementById('network-status');
         if (navigator.onLine) {
@@ -158,8 +165,8 @@
 
     let accountsList = [];
 
-    // بارگذاری حساب‌های بانکی از Supabase
-    async function loadAccounts() {
+    // بارگذاری حساب‌های بانکی و افزودن گزینه «+ افزودن حساب جدید» به منوهای کشویی
+    async function loadAccounts(selectToFocusId = null) {
         try {
             const { data, error } = await supabaseClient.from('accounts').select('*');
             if (error) throw error;
@@ -170,41 +177,76 @@
             const fromSelect = document.getElementById('from_account_id');
             const toSelect = document.getElementById('to_account_id');
 
-            accSelect.innerHTML = '<option value="">انتخاب حساب بانکی...</option>';
-            fromSelect.innerHTML = '<option value="">انتخاب حساب مبدا...</option>';
-            toSelect.innerHTML = '<option value="">انتخاب حساب مقصد...</option>';
+            const populateSelect = (selectEl) => {
+                const currentVal = selectEl.value;
+                selectEl.innerHTML = '<option value="">انتخاب حساب بانکی...</option>';
+                
+                accountsList.forEach(acc => {
+                    const opt = document.createElement('option');
+                    opt.value = acc.id;
+                    opt.innerText = `${acc.name} (${acc.branch || 'بدون شعبه'}) - موجودی: ${acc.balance} تومان`;
+                    selectEl.appendChild(opt);
+                });
 
-            accountsList.forEach(acc => {
-                const opt1 = document.createElement('option');
-                opt1.value = acc.id;
-                opt1.innerText = `${acc.name} (${acc.branch || 'بدون شعبه'}) - موجودی: ${acc.balance} تومان`;
-                accSelect.appendChild(opt1);
+                // اضافه کردن گزینه افزودن حساب جدید در انتهای لیست
+                const addOpt = document.createElement('option');
+                addOpt.value = 'ADD_NEW_ACCOUNT';
+                addOpt.innerText = '➕ افزودن حساب بانکی جدید...';
+                selectEl.appendChild(addOpt);
 
-                const opt2 = opt1.cloneNode(true);
-                fromSelect.appendChild(opt2);
+                if (currentVal && currentVal !== 'ADD_NEW_ACCOUNT') {
+                    selectEl.value = currentVal;
+                }
+            };
 
-                const opt3 = opt1.cloneNode(true);
-                toSelect.appendChild(opt3);
-            });
+            populateSelect(accSelect);
+            populateSelect(fromSelect);
+            populateSelect(toSelect);
+
+            if (selectToFocusId) {
+                document.getElementById(selectToFocusId).value = selectToFocusId;
+            }
         } catch (err) {
             console.error('خطا در بارگذاری حساب‌ها:', err.message);
         }
     }
 
-    // ثبت حساب بانکی جدید
-    document.getElementById('accountForm').addEventListener('submit', async function(e) {
+    // بررسی اینکه آیا کاربر گزینه «افزودن حساب جدید» را انتخاب کرده است یا خیر
+    function checkAddAccountSelection(selectElement) {
+        if (selectElement.value === 'ADD_NEW_ACCOUNT') {
+            activeSelectElement = selectElement;
+            document.getElementById('addAccountModal').classList.remove('hidden');
+            selectElement.value = ''; // ریست کردن موقت انتخاب
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('addAccountModal').classList.add('hidden');
+        document.getElementById('modalAccountForm').reset();
+        activeSelectElement = null;
+    }
+
+    // ثبت حساب بانکی جدید از طریق پنجره پاپ‌آپ
+    document.getElementById('modalAccountForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const name = document.getElementById('acc_name').value;
-        const branch = document.getElementById('acc_branch').value;
-        const balance = parseFloat(document.getElementById('acc_balance').value);
+        const name = document.getElementById('modal_acc_name').value;
+        const branch = document.getElementById('modal_acc_branch').value;
+        const balance = parseFloat(document.getElementById('modal_acc_balance').value);
 
         try {
             const { data, error } = await supabaseClient.from('accounts').insert([{ name, branch, balance }]).select();
             if (error) throw error;
 
-            alert('✅ حساب بانکی جدید با موفقیت در دیتابیس ثبت شد!');
-            document.getElementById('accountForm').reset();
+            const newAccount = data[0];
+            alert('✅ حساب بانکی جدید با موفقیت اضافه شد!');
+            
+            closeModal();
             await loadAccounts();
+
+            // انتخاب خودکار حساب جدید ساخته شده در همان فیلدی که کاربر روی آن کلیک کرده بود
+            if (activeSelectElement) {
+                activeSelectElement.value = newAccount.id;
+            }
         } catch (err) {
             alert('❌ خطا در ثبت حساب: ' + err.message);
         }
