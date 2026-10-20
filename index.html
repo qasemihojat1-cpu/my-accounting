@@ -25,10 +25,10 @@
     <form id="transactionForm">
         <label>نوع تراکنش:</label>
         <select id="type" required>
-            <option value="expense">هزینه</option>
-            <option value="income">درآمد</option>
-            <option value="lend">قرض دادم</option>
-            <option value="borrow">قرض گرفتم</option>
+            <option value="پرداخت">پرداخت</option>
+            <option value="دریافت">دریافت</option>
+            <option value="انتقال موجودی">انتقال موجودی</option>
+            <option value="مغایرت موجودی">مغایرت موجودی</option>
         </select>
 
         <label>مبلغ (تومان):</label>
@@ -48,8 +48,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-    // اطلاعات اتصال به Supabase شما (این مقادیر را از پنل سوپاست بیس خود بردارید)
-    const SUPABASE_URL = 'https://myqtpfdohayrhqmafqrj.supabase.co/rest/v1/';
+    // اطلاعات اتصال به Supabase
+    const SUPABASE_URL = 'https://myqtpfdohayrhqmafqrj.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_6iFdGoWIvKrGKjfF_T-zXQ_-717yY63';
     
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
