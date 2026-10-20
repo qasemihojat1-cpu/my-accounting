@@ -45,7 +45,7 @@
         .btn-logout:hover { background: #dc2626; }
         .btn-text { background: transparent; color: var(--primary); padding: 5px; margin-top: 5px; font-size: 13px; width: auto; font-weight: 600; display: inline-block; }
         
-        .flex-row { display: flex; gap: 10px; align-items: center; }
+        .flex-row { display: flex; gap: 8px; align-items: center; }
         .flex-row select { flex: 1; }
         .btn-icon { width: auto; padding: 12px 15px; margin-top: 0; background: var(--input-bg); border: 1px solid var(--border); color: var(--text-main); font-size: 18px; border-radius: 12px; }
         .btn-icon:hover { background: #e5e7eb; transform: none; }
@@ -57,14 +57,15 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 24, 39, 0.5); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; overflow-y: auto; }
         .modal-content { background: var(--surface); padding: 30px 25px; border-radius: 24px; width: 85%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); margin: auto; max-height: 90vh; overflow-y: auto;}
         
-        .cat-list { max-height: 200px; overflow-y: auto; margin-top: 15px; border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: #fafafa; }
-        .cat-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; }
-        .cat-item:last-child { border-bottom: none; }
-        .cat-delete { color: var(--danger); cursor: pointer; font-weight: bold; padding: 5px; }
-        .cat-badge { display: inline-block; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: bold; color: white; margin-left: 5px; }
-        .badge-expense { background: #ef4444; }
-        .badge-income { background: #10b981; }
-        .badge-asset { background: #3b82f6; }
+        /* استایل‌های نمایش درختی دسته‌بندی‌ها */
+        .cat-list { max-height: 250px; overflow-y: auto; margin-top: 15px; border: 1px solid var(--border); border-radius: 12px; padding: 15px; background: #fafafa; }
+        .tree-type { font-weight: 800; margin-top: 10px; color: var(--text-main); font-size: 15px; border-bottom: 2px solid var(--border); padding-bottom: 4px; }
+        .tree-type:first-child { margin-top: 0; }
+        .tree-main { margin-right: 15px; font-weight: 700; margin-top: 10px; color: var(--primary); font-size: 14px; }
+        .tree-sub { margin-right: 35px; display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e5e7eb; font-size: 13px; color: #4b5563; }
+        .tree-sub:last-child { border-bottom: none; }
+        .cat-delete { color: var(--danger); cursor: pointer; font-weight: bold; padding: 5px; border-radius: 6px; }
+        .cat-delete:hover { background: #fee2e2; }
     </style>
 </head>
 <body>
@@ -121,10 +122,22 @@
         </div>
 
         <div id="categoryDiv">
-            <label>دسته‌بندی:</label>
+            <label>دسته‌بندی (انتخاب درختی):</label>
+            <!-- فیلدهای آبشاری ساختار درختی -->
+            <select id="tx_cat_type" onchange="renderTxCatMain()" style="margin-bottom: 8px;" required>
+                <option value="">۱. نوع دسته‌بندی...</option>
+                <option value="هزینه">🔴 هزینه</option>
+                <option value="درآمد">🟢 درآمد</option>
+                <option value="دارایی">🔵 دارایی</option>
+            </select>
             <div class="flex-row">
-                <select id="category_select" required><option value="">ابتدا بارگذاری می‌شود...</option></select>
-                <button type="button" class="btn-icon" onclick="openCategoryModal()" title="مدیریت دسته‌بندی‌ها">⚙️</button>
+                <select id="tx_cat_main" onchange="renderTxCatSub()" required>
+                    <option value="">۲. دسته اصلی...</option>
+                </select>
+                <select id="tx_cat_sub" required>
+                    <option value="">۳. زیردسته...</option>
+                </select>
+                <button type="button" class="btn-icon" onclick="openCategoryModal()" title="تنظیمات دسته‌بندی‌ها">⚙️</button>
             </div>
         </div>
 
@@ -155,15 +168,17 @@
     </div>
 </div>
 
-<!-- مودال مدیریت دسته‌بندی‌ها -->
+<!-- مودال مدیریت دسته‌بندی‌ها (نمایش درختی) -->
 <div id="manageCategoryModal" class="modal-overlay hidden">
     <div class="modal-content">
-        <h3>مدیریت دسته‌بندی‌ها</h3>
-        <div class="cat-list" id="category_list_container"></div>
+        <h3>ساختار درختی دسته‌بندی‌ها</h3>
+        <div class="cat-list" id="category_list_container">
+            <!-- درختواره توسط جاوااسکریپت در اینجا ساخته می‌شود -->
+        </div>
         <hr style="border-top: 1px solid #eee; margin: 15px 0;">
-        <h4>افزودن دسته‌بندی جدید</h4>
+        <h4>افزودن شاخه جدید</h4>
         <form id="modalCategoryForm">
-            <label>نوع (هزینه / درآمد / دارایی):</label>
+            <label>نوع:</label>
             <select id="cat_type" required>
                 <option value="هزینه">هزینه</option>
                 <option value="درآمد">درآمد</option>
@@ -173,7 +188,7 @@
             <input type="text" id="cat_category" placeholder="مثلاً اغذیه، مسکن..." required>
             <label>زیردسته (سطح ۲):</label>
             <input type="text" id="cat_subcategory" placeholder="مثلاً تنقلات، اجاره..." required>
-            <button type="submit" class="btn-secondary">افزودن دسته‌بندی</button>
+            <button type="submit" class="btn-secondary">افزودن به درختواره</button>
             <button type="button" class="btn-cancel" onclick="closeModal('manageCategoryModal')">بستن</button>
         </form>
     </div>
@@ -189,7 +204,6 @@
     let accountsList = [];
     let categoriesList = [];
 
-    // لیست پیش‌فرض کامل و سه‌سطحی
     const defaultCategories = [
         { type: 'هزینه', category: 'اغذیه', subcategory: 'سوپرمارکت' },
         { type: 'هزینه', category: 'اغذیه', subcategory: 'تنقلات' },
@@ -240,6 +254,7 @@
             setLocalDateTime();
             await loadAccounts();
             await loadCategories();
+            handleTransactionTypeChange(); // مقداردهی اولیه فیلدهای آبشاری
         } else {
             currentUser = null;
             authSection.classList.remove('hidden');
@@ -284,11 +299,17 @@
         else { el.innerText = '🔴 آفلاین'; el.style.background = '#fef2f2'; el.style.color = '#dc2626'; }
     }
 
+    // تغییرات هوشمند بر اساس نوع تراکنش
     function handleTransactionTypeChange() {
         const type = document.getElementById('type').value;
         document.getElementById('singleAccountDiv').classList.toggle('hidden', type === 'انتقال موجودی');
         document.getElementById('transferDiv').classList.toggle('hidden', type !== 'انتقال موجودی');
         document.getElementById('categoryDiv').classList.toggle('hidden', type === 'انتقال موجودی');
+        
+        // انتخاب هوشمند نوع دسته‌بندی درختی
+        const txCatType = document.getElementById('tx_cat_type');
+        if (type === 'پرداخت') { txCatType.value = 'هزینه'; renderTxCatMain(); }
+        else if (type === 'دریافت') { txCatType.value = 'درآمد'; renderTxCatMain(); }
     }
 
     async function loadAccounts() {
@@ -318,20 +339,40 @@
         }
 
         categoriesList = data;
-        const select = document.getElementById('category_select');
-        const currentVal = select.value;
-        select.innerHTML = '<option value="">انتخاب دسته‌بندی...</option>';
-        
-        // مرتب سازی بر اساس نوع
-        categoriesList.sort((a, b) => a.type.localeCompare(b.type));
+        renderTxCatMain(); // به‌روزرسانی آبشاری‌های صفحه اصلی
+    }
 
-        categoriesList.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = `${c.type}|${c.category}|${c.subcategory}`; 
-            opt.innerText = `[${c.type}] ${c.category} ⬅️ ${c.subcategory}`;
-            select.appendChild(opt);
+    // ساخت منوی آبشاری دوم (دسته اصلی)
+    function renderTxCatMain() {
+        const type = document.getElementById('tx_cat_type').value;
+        const mainSelect = document.getElementById('tx_cat_main');
+        const subSelect = document.getElementById('tx_cat_sub');
+        
+        mainSelect.innerHTML = '<option value="">۲. دسته اصلی...</option>';
+        subSelect.innerHTML = '<option value="">۳. زیردسته...</option>';
+        
+        if (!type) return;
+        
+        const mains = [...new Set(categoriesList.filter(c => c.type === type).map(c => c.category))];
+        mains.forEach(m => {
+            mainSelect.innerHTML += `<option value="${m}">${m}</option>`;
         });
-        if(currentVal) select.value = currentVal;
+    }
+
+    // ساخت منوی آبشاری سوم (زیردسته)
+    function renderTxCatSub() {
+        const type = document.getElementById('tx_cat_type').value;
+        const main = document.getElementById('tx_cat_main').value;
+        const subSelect = document.getElementById('tx_cat_sub');
+        
+        subSelect.innerHTML = '<option value="">۳. زیردسته...</option>';
+        
+        if (!type || !main) return;
+        
+        const subs = categoriesList.filter(c => c.type === type && c.category === main);
+        subs.forEach(s => {
+            subSelect.innerHTML += `<option value="${s.subcategory}">${s.subcategory}</option>`;
+        });
     }
 
     function openCategoryModal() {
@@ -339,26 +380,46 @@
         renderCategoryList();
     }
 
+    // ساخت و نمایش درختواره در پنجره مدیریت
     function renderCategoryList() {
         const container = document.getElementById('category_list_container');
         container.innerHTML = '';
-        categoriesList.forEach(c => {
-            const div = document.createElement('div');
-            div.className = 'cat-item';
-            let badgeClass = c.type === 'هزینه' ? 'badge-expense' : (c.type === 'درآمد' ? 'badge-income' : 'badge-asset');
-            div.innerHTML = `
-                <div>
-                    <span class="cat-badge ${badgeClass}">${c.type}</span> 
-                    ${c.category} ⬅️ ${c.subcategory}
-                </div> 
-                <span class="cat-delete" onclick="deleteCategory('${c.id}')">✖</span>
-            `;
-            container.appendChild(div);
+        
+        const types = ['هزینه', 'درآمد', 'دارایی'];
+        const typeIcons = {'هزینه': '🔴', 'درآمد': '🟢', 'دارایی': '🔵'};
+        
+        types.forEach(type => {
+            const typeCats = categoriesList.filter(c => c.type === type);
+            if (typeCats.length === 0) return;
+            
+            // سطح صفر: نوع
+            const typeDiv = document.createElement('div');
+            typeDiv.className = 'tree-type';
+            typeDiv.innerText = `${typeIcons[type]} ${type}‌ها`;
+            container.appendChild(typeDiv);
+            
+            const mains = [...new Set(typeCats.map(c => c.category))];
+            mains.forEach(main => {
+                // سطح یک: دسته اصلی
+                const mainDiv = document.createElement('div');
+                mainDiv.className = 'tree-main';
+                mainDiv.innerText = `📁 ${main}`;
+                container.appendChild(mainDiv);
+                
+                const subs = typeCats.filter(c => c.category === main);
+                subs.forEach(sub => {
+                    // سطح دو: زیردسته
+                    const subDiv = document.createElement('div');
+                    subDiv.className = 'tree-sub';
+                    subDiv.innerHTML = `<span style="display:flex; align-items:center;">└─ 📄 &nbsp; ${sub.subcategory}</span> <span class="cat-delete" onclick="deleteCategory('${sub.id}')" title="حذف شاخه">✖</span>`;
+                    container.appendChild(subDiv);
+                });
+            });
         });
     }
 
     async function deleteCategory(id) {
-        if(!confirm('آیا از حذف این دسته‌بندی مطمئن هستید؟')) return;
+        if(!confirm('آیا از حذف این شاخه مطمئن هستید؟')) return;
         await supabaseClient.from('categories').delete().eq('id', id);
         await loadCategories();
         renderCategoryList();
@@ -409,11 +470,13 @@
             data.from_account_id = fromId; data.to_account_id = toId;
         } else {
             const accId = document.getElementById('account_id').value;
-            const catRaw = document.getElementById('category_select').value;
-            if (!accId || !catRaw) return alert('حساب و دسته‌بندی را انتخاب کنید.');
+            const catType = document.getElementById('tx_cat_type').value;
+            const catMain = document.getElementById('tx_cat_main').value;
+            const catSub = document.getElementById('tx_cat_sub').value;
+            
+            if (!accId || !catType || !catMain || !catSub) return alert('لطفاً حساب بانکی و تمام سطوح دسته‌بندی را انتخاب کنید.');
             
             data.account_id = accId;
-            const [catType, catMain, catSub] = catRaw.split('|');
             data.category_type = catType;
             data.category_main = catMain;
             data.category_sub = catSub;
