@@ -164,6 +164,67 @@
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
         }
+
+        /* تم تیره، مینیمال و یکدست */
+        :root {
+            --primary: #dbeafe; --primary-hover: #bfdbfe; --primary-soft: #1d2b40;
+            --secondary: #34d399; --secondary-hover: #6ee7b7; --secondary-soft: #15352f;
+            --bg-color: #0b0f14; --surface: #121820; --text-main: #e6edf5;
+            --text-muted: #98a6b8; --border: #283341; --input-bg: #0e141b;
+            --danger: #fb7185; --shadow: 0 22px 60px rgba(0,0,0,.28);
+        }
+        html { background: #0b0f14; color-scheme: dark; }
+        body { background: radial-gradient(ellipse at 100% 0%, rgba(52,211,153,.075), transparent 30%), radial-gradient(ellipse at 0% 100%, rgba(96,165,250,.07), transparent 34%), #0b0f14; color: var(--text-main); }
+        .container { background: #121820; border-color: #26313e; box-shadow: 0 22px 60px rgba(0,0,0,.28); }
+        .container::before { height: 3px; background: linear-gradient(90deg, #34d399, #60a5fa); }
+        h2, h3, h4 { color: #e6edf5; }
+        label { color: #b0bdcc; }
+        input, select, textarea { background-color: #0e141b; color: #e6edf5; border-color: #2a3543; }
+        input::placeholder { color: #718096; }
+        input:focus, select:focus, textarea:focus { background-color: #111923; border-color: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,.12); }
+        button { background: #26364a; color: #eef5ff; box-shadow: none; }
+        button:hover { background: #30445c; box-shadow: none; }
+        .btn-secondary, #transactionForm > button[type="submit"] { background: linear-gradient(135deg, #168566, #116b55); color: #f0fdf8; }
+        .btn-secondary:hover, #transactionForm > button[type="submit"]:hover { background: linear-gradient(135deg, #199875, #147b61); }
+        .btn-cancel, .btn-logout { background: #171f29; color: #b8c5d4; border-color: #2b3745; }
+        .btn-cancel:hover, .btn-logout:hover { background: #251a22; color: #fda4af; border-color: #67313d; }
+        .btn-icon { background: #1b2938; border-color: #2c4054; color: #c5ddf8; }
+        .btn-icon:hover { background: #24384c; }
+        .category-picker-trigger { background: #0e141b; color: #e6edf5; border-color: #2a3543; }
+        .category-picker-trigger:hover { background: #151e28; border-color: #3d5368; }
+        .category-picker-panel { background: #121a23; border-color: #2a3543; box-shadow: 0 22px 55px rgba(0,0,0,.45); }
+        .picker-topbar { background: #17212c; color: #e6edf5; border-color: #2a3543; }
+        .picker-back { background: #1d2b40; color: #dbeafe; }
+        .picker-close { background: transparent; color: #9aa9ba; }
+        .picker-search { background: #0c1219; }
+        .picker-option { background: transparent; color: #dce6f1; border-color: #26313e; }
+        .picker-option:hover { background: #172a28; border-color: #285748; color: #6ee7b7; }
+        .picker-option .option-meta { color: #8d9bad; }
+        .picker-option.is-expanded { background: #172a28; border-color: #28624f; color: #6ee7b7; }
+        .picker-type-tabs { display: flex; gap: 6px; flex-wrap: wrap; padding: 9px 10px 3px; }
+        .picker-type-tab { flex: 1 1 calc(50% - 6px); width: auto; min-height: 35px; margin: 0; padding: 7px 8px; background: #17212c; color: #aebdcd; border: 1px solid #2a3543; border-radius: 9px; font-size: 12px; box-shadow: none; }
+        .picker-type-tab:hover { transform: none; box-shadow: none; background: #1b2a36; }
+        .picker-type-tab.active { background: #15352f; color: #6ee7b7; border-color: #28624f; }
+        .picker-suboptions { margin: 0 10px 8px 0; padding: 5px 10px 7px; border-right: 2px solid #2c705b; background: rgba(20,45,40,.48); border-radius: 0 0 10px 10px; }
+        .picker-suboptions .picker-option { min-height: 37px; margin: 3px 0; padding: 8px 10px; background: rgba(10,18,22,.45); font-size: 12px; }
+        .picker-suboptions .picker-option:hover { background: #1b3930; }
+        .recent-wrapper { background: #14231f; border-color: #25483d; }
+        .recent-header { color: #6ee7b7; }
+        .recent-chip { background: #1a352d; color: #a7f3d0; border-color: #2a5a49; }
+        .recent-chip:hover { background: #214638; }
+        #network-status { background: #182536; color: #c8ddf6; border-color: #2a3d53; }
+        .user-email-badge { background: #171f29; color: #dbeafe; border-color: #2a3543; }
+        .modal-overlay { background: rgba(2,6,12,.76); }
+        .modal-content { background: #121820; border-color: #2a3543; box-shadow: 0 25px 70px rgba(0,0,0,.55); }
+        .cat-list { background: #0e141b; border-color: #2a3543; }
+        .tree-sub { color: #aab7c6; border-bottom-color: #2a3543; }
+        .tree-main { color: #6ee7b7; }
+        .cat-delete:hover { background: #2a1b22; }
+        hr { border-color: #2a3543 !important; }
+        ::-webkit-scrollbar-track { background: #111923; }
+        ::-webkit-scrollbar-thumb { background: #344253; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5d70; }
+        .category-picker-panel .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -692,12 +753,15 @@
         const back = document.getElementById('categoryPickerBack');
         const query = document.getElementById('categoryPickerSearch').value.trim().toLocaleLowerCase('fa');
         list.innerHTML = '';
-        back.classList.toggle('hidden', categoryPickerLevel === 'type');
-        const addOption = (label, meta, action, icon = '›') => {
-            const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'picker-option';
+        // در حالت انتخاب دسته اصلی، فهرست همه سر‌دسته‌ها ثابت می‌ماند؛ زیرمجموعه‌ها زیر مورد بازشده می‌آیند.
+        back.classList.add('hidden');
+        const addOption = (parent, label, meta, action, icon = '›', extraClass = '') => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `picker-option ${extraClass}`.trim();
             const title = document.createElement('span'); title.textContent = label;
             const right = document.createElement('span'); right.className = 'option-meta'; right.textContent = meta || icon;
-            btn.append(title, right); btn.onclick = action; list.appendChild(btn);
+            btn.append(title, right); btn.onclick = action; parent.appendChild(btn); return btn;
         };
 
         if (query) {
@@ -707,45 +771,73 @@
             matches.forEach(c => {
                 const key = `${c.type}|${c.category}|${c.subcategory}`;
                 if (unique.has(key)) return; unique.add(key);
-                addOption(`${c.category} ← ${c.subcategory}`, c.type, () => { setSelectedCategory(c.type, c.category, c.subcategory); closeCategoryPicker(); }, 'انتخاب');
+                addOption(list, `${c.category} ← ${c.subcategory}`, c.type, () => {
+                    setSelectedCategory(c.type, c.category, c.subcategory); closeCategoryPicker();
+                }, '✓');
             });
             if (!unique.size) list.innerHTML = '<div class="picker-empty">موردی پیدا نشد.</div>';
             return;
         }
 
-        if (categoryPickerLevel === 'type') {
+        if (categoryPickerLevel === 'type' || !categoryPickerCurrentType) {
             heading.textContent = 'انتخاب نوع دسته‌بندی';
             const types = [
                 { value: 'هزینه', label: '🔴 هزینه' }, { value: 'درآمد', label: '🟢 درآمد' },
                 { value: 'دارایی', label: '🔵 دارایی' }, { value: 'بدهی و طلب', label: '🟠 بدهی و طلب' }
             ];
-            types.forEach(t => addOption(t.label, 'مشاهده دسته‌ها', () => {
+            types.forEach(t => addOption(list, t.label, 'نمایش سر‌دسته‌ها', () => {
                 categoryPickerCurrentType = t.value; categoryPickerCurrentMain = ''; categoryPickerLevel = 'main';
                 document.getElementById('tx_cat_type').value = t.value;
-                document.getElementById('tx_cat_main').value = ''; document.getElementById('tx_cat_sub').value = '';
+                document.getElementById('tx_cat_main').innerHTML = '<option value="">انتخاب دسته اصلی</option>';
+                document.getElementById('tx_cat_sub').innerHTML = '<option value="">انتخاب زیردسته</option>';
                 updateCategoryPickerLabel(); renderCategoryPickerOptions();
             }));
             return;
         }
 
-        if (categoryPickerLevel === 'main') {
-            heading.textContent = `${categoryPickerCurrentType} · انتخاب دسته اصلی`;
-            const mains = [...new Set(categoriesList.filter(c => c.type === categoryPickerCurrentType).map(c => c.category))].sort((a,b) => a.localeCompare(b, 'fa'));
-            mains.forEach(main => addOption(`📁 ${main}`, 'نمایش زیردسته‌ها', () => {
-                categoryPickerCurrentMain = main; categoryPickerLevel = 'sub';
-                document.getElementById('tx_cat_main').value = main; document.getElementById('tx_cat_sub').value = '';
+        heading.textContent = 'دسته‌ها و زیردسته‌ها';
+        const typeTabs = document.createElement('div'); typeTabs.className = 'picker-type-tabs';
+        [
+            { value: 'هزینه', label: '🔴 هزینه' }, { value: 'درآمد', label: '🟢 درآمد' },
+            { value: 'دارایی', label: '🔵 دارایی' }, { value: 'بدهی و طلب', label: '🟠 بدهی و طلب' }
+        ].forEach(t => {
+            const tab = document.createElement('button'); tab.type = 'button';
+            tab.className = `picker-type-tab${t.value === categoryPickerCurrentType ? ' active' : ''}`;
+            tab.textContent = t.label;
+            tab.onclick = () => {
+                categoryPickerCurrentType = t.value; categoryPickerCurrentMain = ''; categoryPickerLevel = 'main';
+                document.getElementById('tx_cat_type').value = t.value;
+                document.getElementById('tx_cat_main').innerHTML = '<option value="">انتخاب دسته اصلی</option>';
+                document.getElementById('tx_cat_sub').innerHTML = '<option value="">انتخاب زیردسته</option>';
+                updateCategoryPickerLabel(); renderCategoryPickerOptions();
+            };
+            typeTabs.appendChild(tab);
+        });
+        list.appendChild(typeTabs);
+        const mains = [...new Set(categoriesList.filter(c => c.type === categoryPickerCurrentType).map(c => c.category))].sort((a,b) => a.localeCompare(b, 'fa'));
+        mains.forEach(main => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'picker-main-group';
+            const expanded = categoryPickerCurrentMain === main;
+            addOption(wrapper, `${expanded ? '▾' : '📁'} ${main}`, expanded ? 'بستن زیردسته‌ها' : 'نمایش زیردسته‌ها', () => {
+                categoryPickerCurrentMain = expanded ? '' : main;
+                categoryPickerLevel = 'main';
+                document.getElementById('tx_cat_main').value = categoryPickerCurrentMain;
+                document.getElementById('tx_cat_sub').value = '';
                 renderCategoryPickerOptions();
-            }));
-            if (!mains.length) list.innerHTML = '<div class="picker-empty">برای این نوع دسته‌ای ثبت نشده است.</div>';
-            return;
-        }
-
-        heading.textContent = `${categoryPickerCurrentMain} · انتخاب زیردسته`;
-        const subs = categoriesList.filter(c => c.type === categoryPickerCurrentType && c.category === categoryPickerCurrentMain).map(c => c.subcategory).sort((a,b) => a.localeCompare(b, 'fa'));
-        subs.forEach(sub => addOption(`📄 ${sub}`, 'انتخاب نهایی', () => {
-            setSelectedCategory(categoryPickerCurrentType, categoryPickerCurrentMain, sub); closeCategoryPicker();
-        }, '✓'));
-        if (!subs.length) list.innerHTML = '<div class="picker-empty">برای این دسته زیردسته‌ای ثبت نشده است.</div>';
+            }, expanded ? '−' : '+', expanded ? 'is-expanded' : '');
+            if (expanded) {
+                const subWrap = document.createElement('div'); subWrap.className = 'picker-suboptions';
+                const subs = [...new Set(categoriesList.filter(c => c.type === categoryPickerCurrentType && c.category === main).map(c => c.subcategory))].sort((a,b) => a.localeCompare(b, 'fa'));
+                subs.forEach(sub => addOption(subWrap, `↳ ${sub}`, 'انتخاب', () => {
+                    setSelectedCategory(categoryPickerCurrentType, main, sub); closeCategoryPicker();
+                }, '✓'));
+                if (!subs.length) subWrap.innerHTML = '<div class="picker-empty">برای این دسته زیردسته‌ای ثبت نشده است.</div>';
+                wrapper.appendChild(subWrap);
+            }
+            list.appendChild(wrapper);
+        });
+        if (!mains.length) list.innerHTML = '<div class="picker-empty">برای این نوع دسته‌ای ثبت نشده است.</div>';
     }
 
     function setSelectedCategory(type, main, sub) {
