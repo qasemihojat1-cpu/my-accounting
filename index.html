@@ -244,7 +244,15 @@
         #category_count { color: #6ee7b7; font-weight: 800; }
         .cat-list { max-height: 340px; padding: 14px; margin-top: 10px; }
         .tree-type { margin: 8px 0 12px; padding: 9px 11px; border: 1px solid #2a3a4b; border-radius: 10px; background: #17212c; color: #dbeafe; }
-        .tree-main { margin: 13px 12px 5px 0; padding-right: 9px; border-right: 2px solid #34d399; }
+        .tree-main { margin: 13px 12px 5px 0; padding: 7px 9px; border-right: 2px solid #34d399; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+        .tree-main-title { min-width: 0; overflow-wrap: anywhere; }
+        .cat-actions { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+        .cat-action { width: auto; min-width: 31px; min-height: 30px; margin: 0; padding: 3px 8px; border-radius: 7px; font-size: 11px; font-weight: 800; box-shadow: none; }
+        .cat-edit { background: #1b2d40; color: #bfdbfe; border: 1px solid #30475f; }
+        .cat-edit:hover { background: #253d55; transform: none; box-shadow: none; }
+        .cat-delete-main { background: #2a1b22; color: #fb7185; border: 1px solid #52303b; }
+        .cat-delete-main:hover { background: #45212d; color: #fecdd3; transform: none; box-shadow: none; }
+        .cat-no-subs { margin: 0 27px 8px 0; color: #8797aa; font-size: 11px; padding: 4px 10px; }
         .tree-sub { margin-right: 27px; padding: 8px 10px; border: 1px solid transparent; border-bottom-color: #26313e; border-radius: 8px; }
         .tree-sub:hover { background: #151f29; border-color: #2a3a4b; }
         .tree-sub-label { line-height: 1.7; }
@@ -399,9 +407,13 @@
                 <option value="بدهی و طلب">🟠 بدهی و طلب</option>
             </select>
         </div>
-        <div class="cat-summary"><span id="category_count">۰ زیردسته</span><span>برای حذف، روی × بزنید</span></div>
+        <div class="cat-summary"><span id="category_count">۰ دسته</span><span>ویرایش و حذف برای دسته اصلی و زیردسته‌ها فعال است</span></div>
         <div class="cat-list" id="category_list_container"></div>
         <div id="category_status" class="cat-status" role="status" aria-live="polite"></div>
+        <div class="category-tools-row" style="margin-top:12px;">
+            <span class="field-hint">می‌توانی دسته اصلی را جداگانه بسازی و بعداً زیردسته اضافه کنی.</span>
+            <button type="button" class="btn-secondary" style="width:auto;min-height:38px;margin:0;padding:8px 12px;" onclick="addMainCategory()">＋ افزودن دسته اصلی</button>
+        </div>
         <hr style="border-top: 1px solid #eee; margin: 15px 0;">
         <h4>＋ افزودن زیردسته جدید</h4>
         <form id="modalCategoryForm">
@@ -742,7 +754,7 @@
 
     async function loadCategories() {
         if (!currentUser) return;
-        const { data, error } = await supabaseClient.from('categories').select('*');
+        const { data, error } = await supabaseClient.from('categories').select('*').eq('user_id', currentUser.id);
         if (error) {
             console.error('خطا در بارگذاری دسته‌بندی‌ها:', error);
             alert('بارگذاری دسته‌بندی‌ها ناموفق بود: ' + error.message);
@@ -790,7 +802,7 @@
     function handleCatMainChange() {
         const type = document.getElementById('tx_cat_type').value;
         const main = document.getElementById('tx_cat_main').value;
-        const subs = categoriesList.filter(c => c.type === type && c.category === main);
+        const subs = categoriesList.filter(c => c.type === type && c.category === main && normalizeCategoryText(c.subcategory));
         document.getElementById('tx_cat_sub').innerHTML = '<option value="">انتخاب زیردسته</option>';
         subs.forEach(item => {
             const option = document.createElement('option'); option.value = item.subcategory; option.textContent = item.subcategory;
@@ -917,7 +929,7 @@
             }, expanded ? '−' : '+', expanded ? 'is-expanded' : '');
             if (expanded) {
                 const subWrap = document.createElement('div'); subWrap.className = 'picker-suboptions';
-                const subs = [...new Set(categoriesList.filter(c => c.type === categoryPickerCurrentType && c.category === main).map(c => c.subcategory))].sort((a,b) => a.localeCompare(b, 'fa'));
+                const subs = [...new Set(categoriesList.filter(c => c.type === categoryPickerCurrentType && c.category === main && normalizeCategoryText(c.subcategory)).map(c => c.subcategory))].sort((a,b) => a.localeCompare(b, 'fa'));
                 subs.forEach(sub => addOption(subWrap, `↳ ${sub}`, 'انتخاب', () => {
                     setSelectedCategory(categoryPickerCurrentType, main, sub); closeCategoryPicker();
                 }, '✓'));
@@ -940,7 +952,7 @@
         });
         mainSelect.value = main;
         subSelect.innerHTML = '<option value="">انتخاب زیردسته</option>';
-        categoriesList.filter(c => c.type === type && c.category === main).forEach(c => {
+        categoriesList.filter(c => c.type === type && c.category === main && normalizeCategoryText(c.subcategory)).forEach(c => {
             const option = document.createElement('option'); option.value = c.subcategory; option.textContent = c.subcategory; subSelect.appendChild(option);
         });
         subSelect.value = sub;
@@ -986,20 +998,32 @@
         return String(value ?? '').trim().replace(/\s+/g, ' ');
     }
 
+    function categoryRowsForMain(type, main) {
+        return categoriesList.filter(c => c.type === type && c.category === main);
+    }
+
     function renderCategoryList() {
         const container = document.getElementById('category_list_container');
         const search = normalizeCategoryText(document.getElementById('category_search')?.value).toLocaleLowerCase('fa');
         const typeFilter = document.getElementById('category_filter_type')?.value || 'همه';
         container.innerHTML = '';
 
-        const filtered = categoriesList.filter(c => {
-            const typeMatches = typeFilter === 'همه' || c.type === typeFilter;
-            const searchMatches = !search || `${c.type} ${c.category} ${c.subcategory}`.toLocaleLowerCase('fa').includes(search);
+        const allMains = [];
+        const seenMains = new Set();
+        categoriesList.forEach(c => {
+            const key = `${c.type}|${c.category}`;
+            if (!seenMains.has(key)) { seenMains.add(key); allMains.push({type:c.type, category:c.category}); }
+        });
+        const matchingMains = allMains.filter(m => {
+            const typeMatches = typeFilter === 'همه' || m.type === typeFilter;
+            const rows = categoryRowsForMain(m.type, m.category);
+            const searchMatches = !search || `${m.type} ${m.category} ${rows.map(r => r.subcategory || '').join(' ')}`.toLocaleLowerCase('fa').includes(search);
             return typeMatches && searchMatches;
         });
-        document.getElementById('category_count').textContent = `${filtered.length.toLocaleString('fa-IR')} زیردسته`;
+        const filteredSubCount = matchingMains.reduce((n, m) => n + categoryRowsForMain(m.type, m.category).filter(c => normalizeCategoryText(c.subcategory)).length, 0);
+        document.getElementById('category_count').textContent = `${matchingMains.length.toLocaleString('fa-IR')} دسته اصلی · ${filteredSubCount.toLocaleString('fa-IR')} زیردسته`;
 
-        if (!filtered.length) {
+        if (!matchingMains.length) {
             const empty = document.createElement('div');
             empty.className = 'cat-empty';
             empty.textContent = categoriesList.length ? 'دسته‌بندی مطابق جست‌وجو پیدا نشد.' : 'هنوز دسته‌بندی‌ای ثبت نشده است.';
@@ -1010,55 +1034,134 @@
         const types = ['هزینه', 'درآمد', 'دارایی', 'بدهی و طلب'];
         const typeIcons = {'هزینه': '🔴', 'درآمد': '🟢', 'دارایی': '🔵', 'بدهی و طلب': '🟠'};
         types.forEach(type => {
-            const typeCats = filtered.filter(c => c.type === type);
-            if (!typeCats.length) return;
+            const typeMains = matchingMains.filter(m => m.type === type).sort((a,b) => a.category.localeCompare(b.category, 'fa'));
+            if (!typeMains.length) return;
             const typeDiv = document.createElement('div');
             typeDiv.className = 'tree-type';
             typeDiv.textContent = `${typeIcons[type] || '📌'} ${type}`;
             container.appendChild(typeDiv);
 
-            const mains = [...new Set(typeCats.map(c => c.category))].sort((a,b) => a.localeCompare(b, 'fa'));
-            mains.forEach(main => {
+            typeMains.forEach(({category: main}) => {
+                const rows = categoryRowsForMain(type, main);
+                const visibleSubs = rows.filter(c => normalizeCategoryText(c.subcategory)).sort((a,b) => String(a.subcategory).localeCompare(String(b.subcategory), 'fa'));
                 const mainDiv = document.createElement('div');
                 mainDiv.className = 'tree-main';
-                mainDiv.textContent = `📁 ${main}`;
+                const mainLabel = document.createElement('span');
+                mainLabel.className = 'tree-main-title';
+                mainLabel.textContent = `📁 ${main}`;
+                const mainActions = document.createElement('span');
+                mainActions.className = 'cat-actions';
+                const editMain = document.createElement('button');
+                editMain.type = 'button'; editMain.className = 'cat-action cat-edit'; editMain.textContent = 'ویرایش';
+                editMain.title = 'ویرایش نام دسته اصلی';
+                editMain.onclick = () => renameMainCategory(type, main);
+                const delMain = document.createElement('button');
+                delMain.type = 'button'; delMain.className = 'cat-action cat-delete-main'; delMain.textContent = 'حذف';
+                delMain.title = 'حذف دسته اصلی و همه زیردسته‌هایش';
+                delMain.onclick = () => deleteMainCategory(type, main);
+                mainActions.append(editMain, delMain);
+                mainDiv.append(mainLabel, mainActions);
                 container.appendChild(mainDiv);
 
-                typeCats.filter(c => c.category === main)
-                    .sort((a,b) => String(a.subcategory).localeCompare(String(b.subcategory), 'fa'))
-                    .forEach(sub => {
-                        const subDiv = document.createElement('div');
-                        subDiv.className = 'tree-sub';
-                        const label = document.createElement('span');
-                        label.className = 'tree-sub-label';
-                        label.textContent = `└─ 📄 ${sub.subcategory}`;
-                        const del = document.createElement('button');
-                        del.type = 'button';
-                        del.className = 'cat-delete';
-                        del.textContent = '×';
-                        del.title = 'حذف زیردسته';
-                        del.setAttribute('aria-label', `حذف ${sub.subcategory}`);
-                        del.onclick = () => deleteCategory(sub.id);
-                        subDiv.append(label, del);
-                        container.appendChild(subDiv);
-                    });
+                if (!visibleSubs.length) {
+                    const emptySubs = document.createElement('div');
+                    emptySubs.className = 'cat-no-subs';
+                    emptySubs.textContent = 'هنوز زیردسته‌ای ندارد.';
+                    container.appendChild(emptySubs);
+                }
+
+                visibleSubs.forEach(sub => {
+                    const subDiv = document.createElement('div');
+                    subDiv.className = 'tree-sub';
+                    const label = document.createElement('span');
+                    label.className = 'tree-sub-label';
+                    label.textContent = `└─ 📄 ${sub.subcategory}`;
+                    const actions = document.createElement('span');
+                    actions.className = 'cat-actions';
+                    const edit = document.createElement('button');
+                    edit.type = 'button'; edit.className = 'cat-action cat-edit'; edit.textContent = 'ویرایش';
+                    edit.title = 'ویرایش نام زیردسته';
+                    edit.onclick = () => renameSubcategory(sub.id);
+                    const del = document.createElement('button');
+                    del.type = 'button'; del.className = 'cat-action cat-delete'; del.textContent = '×';
+                    del.title = 'حذف زیردسته'; del.setAttribute('aria-label', `حذف ${sub.subcategory}`);
+                    del.onclick = () => deleteCategory(sub.id);
+                    actions.append(edit, del);
+                    subDiv.append(label, actions);
+                    container.appendChild(subDiv);
+                });
             });
         });
     }
 
-    async function deleteCategory(id) {
-        const category = categoriesList.find(c => String(c.id) === String(id));
-        if (!category) return;
-        const used = confirm(`زیردسته «${category.subcategory}» از دسته «${category.category}» حذف شود؟\n\nتوجه: این کار ممکن است روی تراکنش‌های قبلی اثر نگذارد، اما این زیردسته دیگر برای ثبت تراکنش جدید نمایش داده نمی‌شود.`);
-        if (!used) return;
-        const { error } = await supabaseClient.from('categories').delete().eq('id', id);
-        if (error) {
-            showCategoryStatus('حذف انجام نشد: ' + error.message, 'error');
-            return;
-        }
+    async function refreshCategoriesAfterMutation(successMessage) {
         await loadCategories();
         renderCategoryList();
-        showCategoryStatus('زیردسته با موفقیت حذف شد.');
+        refreshMainCategorySuggestions();
+        showCategoryStatus(successMessage, 'success');
+    }
+
+    async function addMainCategory() {
+        if (!currentUser) return showCategoryStatus('ابتدا وارد حساب کاربری شوید.', 'error');
+        const type = document.getElementById('cat_type').value;
+        const main = normalizeCategoryText(document.getElementById('cat_category').value);
+        if (!type || !main) return showCategoryStatus('نوع و نام دسته اصلی را وارد کنید.', 'error');
+        const exists = categoriesList.some(c => c.type === type && normalizeCategoryText(c.category).toLocaleLowerCase('fa') === main.toLocaleLowerCase('fa'));
+        if (exists) return showCategoryStatus('این دسته اصلی از قبل وجود دارد.', 'error');
+        const { error } = await supabaseClient.from('categories').insert([{ type, category: main, subcategory: '', user_id: currentUser.id }]);
+        if (error) return showCategoryStatus('ساخت دسته اصلی انجام نشد: ' + error.message, 'error');
+        document.getElementById('cat_category').value = main;
+        await refreshCategoriesAfterMutation(`دسته اصلی «${main}» اضافه شد. حالا می‌توانی زیردسته‌هایش را ثبت کنی.`);
+    }
+
+    async function renameMainCategory(type, oldName) {
+        const nextName = normalizeCategoryText(prompt(`نام جدید برای دسته اصلی «${oldName}» را وارد کن:`, oldName));
+        if (!nextName || nextName === oldName) return;
+        const collision = categoriesList.some(c => c.type === type && normalizeCategoryText(c.category).toLocaleLowerCase('fa') === nextName.toLocaleLowerCase('fa') && c.category !== oldName);
+        if (collision) return showCategoryStatus('دسته‌ای با این نام در همین نوع وجود دارد.', 'error');
+        const { error } = await supabaseClient.from('categories').update({ category: nextName }).eq('user_id', currentUser.id).eq('type', type).eq('category', oldName);
+        if (error) return showCategoryStatus('ویرایش دسته اصلی انجام نشد: ' + error.message, 'error');
+        await refreshCategoriesAfterMutation(`نام دسته اصلی به «${nextName}» تغییر کرد. تراکنش‌های قبلی تغییر نکرده‌اند.`);
+    }
+
+    async function renameSubcategory(id) {
+        const item = categoriesList.find(c => String(c.id) === String(id));
+        if (!item || !normalizeCategoryText(item.subcategory)) return;
+        const nextName = normalizeCategoryText(prompt(`نام جدید برای زیردسته «${item.subcategory}» را وارد کن:`, item.subcategory));
+        if (!nextName || nextName === item.subcategory) return;
+        const duplicate = categoriesList.some(c => String(c.id) !== String(id) && c.type === item.type && c.category === item.category && normalizeCategoryText(c.subcategory).toLocaleLowerCase('fa') === nextName.toLocaleLowerCase('fa'));
+        if (duplicate) return showCategoryStatus('این زیردسته در همین دسته اصلی وجود دارد.', 'error');
+        const { error } = await supabaseClient.from('categories').update({ subcategory: nextName }).eq('id', id).eq('user_id', currentUser.id);
+        if (error) return showCategoryStatus('ویرایش زیردسته انجام نشد: ' + error.message, 'error');
+        await refreshCategoriesAfterMutation(`نام زیردسته به «${nextName}» تغییر کرد. تراکنش‌های قبلی تغییر نکرده‌اند.`);
+    }
+
+    async function deleteMainCategory(type, main) {
+        const rows = categoryRowsForMain(type, main);
+        if (!rows.length) return;
+        const subCount = rows.filter(c => normalizeCategoryText(c.subcategory)).length;
+        const confirmed = confirm(`دسته اصلی «${main}» و ${subCount} زیردسته آن حذف شود؟\n\nاین عملیات فقط ساختار دسته‌بندی برای ثبت‌های بعدی را حذف می‌کند؛ تراکنش‌های قبلی تغییر نمی‌کنند.`);
+        if (!confirmed) return;
+        const { error } = await supabaseClient.from('categories').delete().eq('user_id', currentUser.id).eq('type', type).eq('category', main);
+        if (error) return showCategoryStatus('حذف دسته اصلی انجام نشد: ' + error.message, 'error');
+        await refreshCategoriesAfterMutation(`دسته اصلی «${main}» و زیردسته‌هایش حذف شدند. تراکنش‌های قبلی دست‌نخورده ماندند.`);
+    }
+
+    async function deleteCategory(id) {
+        const category = categoriesList.find(c => String(c.id) === String(id));
+        if (!category || !normalizeCategoryText(category.subcategory)) return;
+        const remainingSubs = categoryRowsForMain(category.type, category.category).filter(c => normalizeCategoryText(c.subcategory) && String(c.id) !== String(id));
+        const confirmed = confirm(`زیردسته «${category.subcategory}» از دسته «${category.category}» حذف شود؟\n\nتراکنش‌های قبلی تغییر نمی‌کنند.`);
+        if (!confirmed) return;
+        let result;
+        if (remainingSubs.length === 0) {
+            // Keep a marker row so the main category itself remains available after its last subcategory is deleted.
+            result = await supabaseClient.from('categories').update({ subcategory: '' }).eq('id', id).eq('user_id', currentUser.id);
+        } else {
+            result = await supabaseClient.from('categories').delete().eq('id', id).eq('user_id', currentUser.id);
+        }
+        if (result.error) return showCategoryStatus('حذف زیردسته انجام نشد: ' + result.error.message, 'error');
+        await refreshCategoriesAfterMutation(`زیردسته «${category.subcategory}» حذف شد. تراکنش‌های قبلی تغییر نکردند.`);
     }
 
     document.getElementById('modalCategoryForm').addEventListener('submit', async (e) => {
@@ -1070,27 +1173,27 @@
             showCategoryStatus('لطفاً نوع، دسته اصلی و زیردسته را کامل وارد کنید.', 'error');
             return;
         }
+        if (!currentUser) return showCategoryStatus('ابتدا وارد حساب کاربری شوید.', 'error');
 
         const duplicate = categoriesList.some(c =>
             String(c.type).trim() === type &&
             normalizeCategoryText(c.category).toLocaleLowerCase('fa') === category.toLocaleLowerCase('fa') &&
             normalizeCategoryText(c.subcategory).toLocaleLowerCase('fa') === subcategory.toLocaleLowerCase('fa')
         );
-        if (duplicate) {
-            showCategoryStatus('این زیردسته قبلاً برای همین نوع و دسته اصلی ثبت شده است.', 'error');
-            return;
-        }
+        if (duplicate) return showCategoryStatus('این زیردسته قبلاً برای همین نوع و دسته اصلی ثبت شده است.', 'error');
 
-        const { error } = await supabaseClient.from('categories').insert([{ type, category, subcategory, user_id: currentUser.id }]);
-        if (error) {
-            showCategoryStatus('ثبت دسته‌بندی انجام نشد: ' + error.message, 'error');
-            return;
+        const mainOnly = categoriesList.find(c => c.type === type && normalizeCategoryText(c.category).toLocaleLowerCase('fa') === category.toLocaleLowerCase('fa') && !normalizeCategoryText(c.subcategory));
+        let result;
+        if (mainOnly) {
+            result = await supabaseClient.from('categories').update({ subcategory }).eq('id', mainOnly.id).eq('user_id', currentUser.id);
+        } else {
+            result = await supabaseClient.from('categories').insert([{ type, category, subcategory, user_id: currentUser.id }]);
         }
+        if (result.error) return showCategoryStatus('ثبت دسته‌بندی انجام نشد: ' + result.error.message, 'error');
+
         document.getElementById('cat_category').value = category;
         document.getElementById('cat_subcategory').value = '';
-        await loadCategories();
-        renderCategoryList();
-        showCategoryStatus(`زیردسته «${subcategory}» با موفقیت اضافه شد.`);
+        await refreshCategoriesAfterMutation(`زیردسته «${subcategory}» با موفقیت اضافه شد.`);
     });
 
     function checkAddAccountSelection(el) {
